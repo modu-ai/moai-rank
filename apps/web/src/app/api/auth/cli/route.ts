@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { db, users } from '@/db';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import { generateApiKey } from '@/lib/auth';
 import { logApiKeyGenerated } from '@/lib/audit';
 import { randomBytes } from 'crypto';
@@ -127,10 +127,15 @@ async function processCliAuth(
     );
 
     const githubUsername = githubAccount?.username || user.username || 'user';
-    const githubId = githubAccount?.externalId || clerkId;
+    // Ensure githubId is always a string
+    const githubId = String(githubAccount?.externalId || clerkId);
 
-    // Check if user exists in database
-    const dbUser = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
+    // Check if user exists in database (by clerkId or githubId for migration cases)
+    const dbUser = await db
+      .select()
+      .from(users)
+      .where(or(eq(users.clerkId, clerkId), eq(users.githubId, githubId)))
+      .limit(1);
 
     let apiKey: string;
 
@@ -154,7 +159,7 @@ async function processCliAuth(
 
       await logApiKeyGenerated(newUser[0].id, prefix, request);
     } else {
-      // User exists - generate new API key for CLI registration
+      // User exists - update clerkId if needed (migration case) and generate new API key
       const existingUser = dbUser[0];
       const { key, hash, prefix } = generateApiKey(existingUser.id);
       apiKey = key;
@@ -162,6 +167,9 @@ async function processCliAuth(
       await db
         .update(users)
         .set({
+          clerkId, // Update clerkId in case user re-registered with new Clerk account
+          githubUsername, // Update username in case it changed
+          githubAvatarUrl: user.imageUrl,
           apiKeyHash: hash,
           apiKeyPrefix: prefix,
           updatedAt: new Date(),
