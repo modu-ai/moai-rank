@@ -1,0 +1,6 @@
+language:
+  conversation_language: ko
+  conversation_language_name: Korean (한국어)
+  git_commit_messages: en
+  code_comments: en
+  documentation: en

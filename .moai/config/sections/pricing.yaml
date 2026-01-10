@@ -1,0 +1,3 @@
+service:
+  type: claude_subscription
+  pricing_plan: max20
