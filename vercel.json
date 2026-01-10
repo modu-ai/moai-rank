@@ -1,10 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "buildCommand": "turbo run build --filter=@moai-rank/web",
+  "buildCommand": "cd apps/web && bun run build",
   "installCommand": "bun install",
   "outputDirectory": "apps/web/.next",
-  "ignoreCommand": "npx turbo-ignore",
+  "framework": "nextjs",
   "regions": ["icn1"],
   "headers": [
     {
