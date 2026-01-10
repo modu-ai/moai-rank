@@ -3,7 +3,6 @@
   "buildCommand": "cd apps/web && bun run build",
   "installCommand": "bun install",
   "outputDirectory": "apps/web/.next",
-  "framework": "nextjs",
   "regions": ["icn1"],
   "headers": [
     {
