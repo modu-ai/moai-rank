@@ -28,7 +28,7 @@ export const users = pgTable(
     githubUsername: varchar('github_username', { length: 255 }).notNull(),
     githubAvatarUrl: text('github_avatar_url'),
     apiKeyHash: varchar('api_key_hash', { length: 64 }).notNull(), // SHA-256 hash only
-    apiKeyPrefix: varchar('api_key_prefix', { length: 16 }).notNull(), // 'moai_rank_ab12...'
+    apiKeyPrefix: varchar('api_key_prefix', { length: 32 }).notNull(), // 'moai_rank_xxxxxxxx' (10 + 8 = 18 chars)
     userSalt: varchar('user_salt', { length: 64 }).notNull().default(crypto.randomUUID()),
     privacyMode: boolean('privacy_mode').default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
