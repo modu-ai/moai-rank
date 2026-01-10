@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { db, users } from '@/db';
-import { eq, or } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { generateApiKey } from '@/lib/auth';
 import { logApiKeyGenerated } from '@/lib/audit';
 import { randomBytes } from 'crypto';
@@ -130,36 +130,13 @@ async function processCliAuth(
     // Ensure githubId is always a string
     const githubId = String(githubAccount?.externalId || clerkId);
 
-    // Check if user exists in database (by clerkId or githubId for migration cases)
-    const dbUser = await db
-      .select()
-      .from(users)
-      .where(or(eq(users.clerkId, clerkId), eq(users.githubId, githubId)))
-      .limit(1);
-
     let apiKey: string;
 
-    if (dbUser.length === 0) {
-      // Create new user
-      const { key, hash, prefix } = generateApiKey(clerkId);
-      apiKey = key;
+    // Step 1: Check by clerkId first (primary identifier)
+    let dbUser = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
 
-      const newUser = await db
-        .insert(users)
-        .values({
-          clerkId,
-          githubId,
-          githubUsername,
-          githubAvatarUrl: user.imageUrl,
-          apiKeyHash: hash,
-          apiKeyPrefix: prefix,
-          userSalt: randomBytes(32).toString('hex'),
-        })
-        .returning();
-
-      await logApiKeyGenerated(newUser[0].id, prefix, request);
-    } else {
-      // User exists - update clerkId if needed (migration case) and generate new API key
+    if (dbUser.length > 0) {
+      // User found by clerkId - update info and generate new API key
       const existingUser = dbUser[0];
       const { key, hash, prefix } = generateApiKey(existingUser.id);
       apiKey = key;
@@ -167,8 +144,7 @@ async function processCliAuth(
       await db
         .update(users)
         .set({
-          clerkId, // Update clerkId in case user re-registered with new Clerk account
-          githubUsername, // Update username in case it changed
+          githubUsername,
           githubAvatarUrl: user.imageUrl,
           apiKeyHash: hash,
           apiKeyPrefix: prefix,
@@ -177,6 +153,49 @@ async function processCliAuth(
         .where(eq(users.id, existingUser.id));
 
       await logApiKeyGenerated(existingUser.id, prefix, request);
+    } else {
+      // Step 2: Not found by clerkId, check by githubId (migration case)
+      dbUser = await db.select().from(users).where(eq(users.githubId, githubId)).limit(1);
+
+      if (dbUser.length > 0) {
+        // User found by githubId - update clerkId and other info
+        const existingUser = dbUser[0];
+        const { key, hash, prefix } = generateApiKey(existingUser.id);
+        apiKey = key;
+
+        await db
+          .update(users)
+          .set({
+            clerkId, // Update clerkId for migration
+            githubUsername,
+            githubAvatarUrl: user.imageUrl,
+            apiKeyHash: hash,
+            apiKeyPrefix: prefix,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, existingUser.id));
+
+        await logApiKeyGenerated(existingUser.id, prefix, request);
+      } else {
+        // Step 3: User not found at all - create new user
+        const { key, hash, prefix } = generateApiKey(clerkId);
+        apiKey = key;
+
+        const newUser = await db
+          .insert(users)
+          .values({
+            clerkId,
+            githubId,
+            githubUsername,
+            githubAvatarUrl: user.imageUrl,
+            apiKeyHash: hash,
+            apiKeyPrefix: prefix,
+            userSalt: randomBytes(32).toString('hex'),
+          })
+          .returning();
+
+        await logApiKeyGenerated(newUser[0].id, prefix, request);
+      }
     }
 
     // Redirect to CLI's callback with API key
