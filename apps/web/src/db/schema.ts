@@ -17,13 +17,14 @@ import {
 /**
  * Users table
  * Stores user information linked to Clerk authentication
+ * Authentication: GitHub OAuth only (configured in Clerk Dashboard)
  */
 export const users = pgTable(
   'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     clerkId: varchar('clerk_id', { length: 255 }).unique().notNull(),
-    githubId: varchar('github_id', { length: 255 }).unique(),
+    githubId: varchar('github_id', { length: 255 }).unique().notNull(),
     githubUsername: varchar('github_username', { length: 255 }).notNull(),
     githubAvatarUrl: text('github_avatar_url'),
     apiKeyHash: varchar('api_key_hash', { length: 64 }).notNull(), // SHA-256 hash only
@@ -38,7 +39,7 @@ export const users = pgTable(
 
 /**
  * Sessions table
- * Tracks Claude Code sessions
+ * Tracks Claude Code sessions with detailed metrics
  */
 export const sessions = pgTable(
   'sessions',
@@ -47,13 +48,29 @@ export const sessions = pgTable(
     userId: uuid('user_id').references(() => users.id),
     serverSessionHash: varchar('server_session_hash', { length: 64 }).unique().notNull(),
     anonymousProjectId: varchar('anonymous_project_id', { length: 16 }),
+    startedAt: timestamp('started_at', { withTimezone: true }),
     endedAt: timestamp('ended_at', { withTimezone: true }).notNull(),
+    durationSeconds: integer('duration_seconds'),
     modelName: varchar('model_name', { length: 50 }),
+    turnCount: integer('turn_count'),
+    // Tool usage: {"Read": 10, "Write": 5, "Edit": 8, "Bash": 3, ...}
+    toolUsage: jsonb('tool_usage').$type<Record<string, number>>(),
+    // Code metrics: {"linesAdded": 150, "linesDeleted": 30, "filesModified": 5, "filesCreated": 2}
+    codeMetrics: jsonb('code_metrics').$type<{
+      linesAdded: number;
+      linesDeleted: number;
+      filesModified: number;
+      filesCreated: number;
+    }>(),
+    // Model usage breakdown: {"claude-opus-4": {"input": 5000, "output": 2000}, ...}
+    modelUsageDetails:
+      jsonb('model_usage_details').$type<Record<string, { input: number; output: number }>>(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index('sessions_user_id_idx').on(table.userId),
     index('sessions_created_at_idx').on(table.createdAt),
+    index('sessions_started_at_idx').on(table.startedAt),
   ]
 );
 

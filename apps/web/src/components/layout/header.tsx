@@ -1,9 +1,10 @@
-import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
-import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
-import { Trophy, LayoutDashboard } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "./theme-toggle";
+import Link from 'next/link';
+import { auth } from '@clerk/nextjs/server';
+import { SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import { Trophy, LayoutDashboard } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ThemeToggle } from './theme-toggle';
+import { GitHubButton } from './github-button';
 
 export async function Header() {
   const { userId } = await auth();
@@ -26,6 +27,7 @@ export async function Header() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          <GitHubButton />
           <ThemeToggle />
 
           {userId ? (
@@ -45,7 +47,7 @@ export async function Header() {
                 afterSignOutUrl="/"
                 appearance={{
                   elements: {
-                    avatarBox: "h-8 w-8",
+                    avatarBox: 'h-8 w-8',
                   },
                 }}
               />

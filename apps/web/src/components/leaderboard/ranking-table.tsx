@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { Trophy, Medal, Award, User, EyeOff } from "lucide-react";
+import Link from 'next/link';
+import { Trophy, Medal, Award, User, EyeOff } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -9,10 +9,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { formatNumber } from "@/lib/utils";
+} from '@/components/ui/table';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { formatNumber } from '@/lib/utils';
 
 interface LeaderboardEntry {
   rank: number;
@@ -71,16 +71,10 @@ export function RankingTable({ entries, currentUserId }: RankingTableProps) {
           <TableRow>
             <TableHead className="w-20">Rank</TableHead>
             <TableHead>User</TableHead>
-            <TableHead className="hidden text-right sm:table-cell">
-              Score
-            </TableHead>
+            <TableHead className="hidden text-right sm:table-cell">Score</TableHead>
             <TableHead className="text-right">Tokens</TableHead>
-            <TableHead className="hidden text-right md:table-cell">
-              Sessions
-            </TableHead>
-            <TableHead className="hidden text-right lg:table-cell">
-              Efficiency
-            </TableHead>
+            <TableHead className="hidden text-right md:table-cell">Sessions</TableHead>
+            <TableHead className="hidden text-right lg:table-cell">Efficiency</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -91,22 +85,21 @@ export function RankingTable({ entries, currentUserId }: RankingTableProps) {
             return (
               <TableRow
                 key={`${entry.rank}-${entry.userId}`}
-                className={isCurrentUser ? "bg-primary/5" : undefined}
+                className={isCurrentUser ? 'bg-primary/5' : undefined}
               >
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {rankIcon}
-                    {getRankBadge(entry.rank)}
+                    {entry.rank > 3 && (
+                      <span className="font-mono text-muted-foreground">#{entry.rank}</span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                       {entry.avatarUrl ? (
-                        <AvatarImage
-                          src={entry.avatarUrl}
-                          alt={entry.username}
-                        />
+                        <AvatarImage src={entry.avatarUrl} alt={entry.username} />
                       ) : null}
                       <AvatarFallback>
                         {entry.isPrivate ? (
@@ -117,21 +110,22 @@ export function RankingTable({ entries, currentUserId }: RankingTableProps) {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      {entry.isPrivate ? (
-                        <span className="text-sm font-medium text-muted-foreground">
-                          Anonymous
-                        </span>
-                      ) : (
-                        <Link
-                          href={`/users/${entry.username}`}
-                          className="text-sm font-medium hover:underline"
-                        >
-                          {entry.username}
-                        </Link>
-                      )}
-                      {isCurrentUser && (
-                        <span className="text-xs text-primary">You</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {entry.isPrivate ? (
+                          <span className="text-sm font-medium text-muted-foreground">
+                            Anonymous
+                          </span>
+                        ) : (
+                          <Link
+                            href={`/users/${entry.username}`}
+                            className="text-sm font-medium hover:underline"
+                          >
+                            {entry.username}
+                          </Link>
+                        )}
+                        {entry.rank <= 3 && getRankBadge(entry.rank)}
+                      </div>
+                      {isCurrentUser && <span className="text-xs text-primary">You</span>}
                     </div>
                   </div>
                 </TableCell>
@@ -141,18 +135,14 @@ export function RankingTable({ entries, currentUserId }: RankingTableProps) {
                   </span>
                 </TableCell>
                 <TableCell className="text-right">
-                  <span className="font-mono">
-                    {formatNumber(entry.totalTokens)}
-                  </span>
+                  <span className="font-mono">{formatNumber(entry.totalTokens)}</span>
                 </TableCell>
                 <TableCell className="hidden text-right md:table-cell">
                   <span className="font-mono">{entry.sessionCount}</span>
                 </TableCell>
                 <TableCell className="hidden text-right lg:table-cell">
                   {entry.efficiencyScore !== null ? (
-                    <span className="font-mono">
-                      {(entry.efficiencyScore * 100).toFixed(1)}%
-                    </span>
+                    <span className="font-mono">{(entry.efficiencyScore * 100).toFixed(1)}%</span>
                   ) : (
                     <span className="text-muted-foreground">-</span>
                   )}

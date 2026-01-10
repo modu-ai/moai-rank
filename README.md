@@ -239,7 +239,7 @@ We welcome contributions from the community! Here's how you can help:
 
 ```bash
 # Clone the repository
-git clone https://github.com/GoosLab/moai-rank.git
+git clone https://github.com/modu-ai/moai-rank.git
 cd moai-rank
 
 # Install dependencies
@@ -313,7 +313,7 @@ See the [LICENSE](LICENSE) file for the full license text.
 ## :link: Links
 
 - **Live Site**: [rank.mo.ai.kr](https://rank.mo.ai.kr)
-- **GitHub**: [github.com/GoosLab/moai-rank](https://github.com/GoosLab/moai-rank)
+- **GitHub**: [github.com/modu-ai/moai-rank](https://github.com/modu-ai/moai-rank)
 - **MoAI-ADK**: [github.com/moai-project/moai-adk](https://github.com/moai-project/moai-adk)
 
 ---

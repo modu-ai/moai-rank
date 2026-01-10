@@ -1,0 +1,11 @@
+# MoAI Rank - robots.txt
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://rank.moai.dev/sitemap.xml
+
+# Disallow API routes from indexing
+Disallow: /api/
+Disallow: /sign-in
+Disallow: /sign-up

@@ -239,7 +239,7 @@ moai init  # 프로젝트에서 초기화
 
 ```bash
 # 저장소 클론
-git clone https://github.com/GoosLab/moai-rank.git
+git clone https://github.com/modu-ai/moai-rank.git
 cd moai-rank
 
 # 의존성 설치
@@ -313,7 +313,7 @@ AGPL-3.0은 **카피레프트** 라이선스입니다. 이는 다음을 의미�
 ## :link: 링크
 
 - **서비스**: [rank.mo.ai.kr](https://rank.mo.ai.kr)
-- **GitHub**: [github.com/GoosLab/moai-rank](https://github.com/GoosLab/moai-rank)
+- **GitHub**: [github.com/modu-ai/moai-rank](https://github.com/modu-ai/moai-rank)
 - **MoAI-ADK**: [github.com/moai-project/moai-adk](https://github.com/moai-project/moai-adk)
 
 ---
