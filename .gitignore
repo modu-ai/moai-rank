@@ -222,3 +222,5 @@ dist-ssr/
 .firebase/
 .github/workflows/*.yml.bak
 .gitlab-ci.yml.bak
+.vercel
+.env*.local
