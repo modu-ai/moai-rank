@@ -212,13 +212,28 @@ async function processCliAuth(
     return response;
   } catch (error) {
     console.error('[CLI Auth] Error:', error);
+
+    // Extract detailed error information
+    let errorDetails = 'Unknown error';
+    if (error instanceof Error) {
+      errorDetails = error.message;
+      // Check for nested cause (common in Drizzle/Neon errors)
+      if ('cause' in error && error.cause) {
+        errorDetails += ` | Cause: ${error.cause instanceof Error ? error.cause.message : String(error.cause)}`;
+      }
+      // Check for code property (database errors)
+      if ('code' in error) {
+        errorDetails += ` | Code: ${(error as { code: string }).code}`;
+      }
+    }
+
     return NextResponse.json(
       {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Failed to process CLI authentication',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          details: errorDetails,
         },
       },
       { status: 500 }
