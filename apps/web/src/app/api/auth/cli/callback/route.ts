@@ -6,34 +6,47 @@ import { generateApiKey } from '@/lib/auth';
 import { logApiKeyGenerated } from '@/lib/audit';
 import { randomBytes } from 'crypto';
 
-/**
- * Import shared state store from main CLI auth route
- * Note: In production, use Redis or database for distributed state
- */
-import { cliAuthStates } from '../route';
+// Import cookie name from main CLI auth route
+import { CLI_AUTH_COOKIE } from '../route';
+
+interface CliAuthState {
+  redirectUri: string;
+  state: string;
+  createdAt: number;
+}
 
 /**
  * GET /api/auth/cli/callback
  *
  * Handles the callback after Clerk sign-in.
  * Completes the CLI OAuth flow by:
- * 1. Verifying the user is authenticated
- * 2. Creating or retrieving the user in our database
- * 3. Generating an API key
- * 4. Redirecting to CLI's localhost callback
+ * 1. Reading stored state from cookie
+ * 2. Verifying the user is authenticated
+ * 3. Creating or retrieving the user in our database
+ * 4. Generating an API key
+ * 5. Redirecting to CLI's localhost callback
  */
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const stateKey = searchParams.get('state_key');
+  // Read state from cookie
+  const cookieValue = request.cookies.get(CLI_AUTH_COOKIE)?.value;
 
-  if (!stateKey) {
-    return renderErrorPage('Missing state parameter');
+  if (!cookieValue) {
+    return renderErrorPage('Auth session expired. Please try again.');
   }
 
-  // Get stored state info
-  const stateInfo = cliAuthStates.get(stateKey);
-  if (!stateInfo) {
-    return renderErrorPage('Auth session expired. Please try again.');
+  let stateInfo: CliAuthState;
+  try {
+    const decoded = Buffer.from(cookieValue, 'base64').toString('utf-8');
+    stateInfo = JSON.parse(decoded);
+  } catch {
+    return renderErrorPage('Invalid auth session. Please try again.');
+  }
+
+  // Validate cookie age (5 minutes max)
+  if (Date.now() - stateInfo.createdAt > 5 * 60 * 1000) {
+    const response = renderErrorPage('Auth session expired. Please try again.');
+    response.cookies.delete(CLI_AUTH_COOKIE);
+    return response;
   }
 
   // Check if user is authenticated
@@ -58,7 +71,7 @@ export async function GET(request: NextRequest) {
     const githubId = githubAccount?.externalId || clerkId;
 
     // Check if user exists in database
-    let dbUser = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
+    const dbUser = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
 
     let apiKey: string;
     let isNewUser = false;
@@ -101,20 +114,22 @@ export async function GET(request: NextRequest) {
       await logApiKeyGenerated(existingUser.id, prefix, request);
     }
 
-    // Clean up state
-    cliAuthStates.delete(stateKey);
-
     // Redirect to CLI's callback with API key
     const cliCallbackUrl = new URL(stateInfo.redirectUri);
     cliCallbackUrl.searchParams.set('api_key', apiKey);
     cliCallbackUrl.searchParams.set('state', stateInfo.state);
     cliCallbackUrl.searchParams.set('username', githubUsername);
 
-    // Show success page that redirects to CLI
-    return renderSuccessPage(cliCallbackUrl.toString(), githubUsername, isNewUser);
+    // Show success page that redirects to CLI and clear the auth cookie
+    const response = renderSuccessPage(cliCallbackUrl.toString(), githubUsername, isNewUser);
+    response.cookies.delete(CLI_AUTH_COOKIE);
+
+    return response;
   } catch (error) {
     console.error('[CLI Auth Callback] Error:', error);
-    return renderErrorPage('Failed to complete authentication. Please try again.');
+    const response = renderErrorPage('Failed to complete authentication. Please try again.');
+    response.cookies.delete(CLI_AUTH_COOKIE);
+    return response;
   }
 }
 

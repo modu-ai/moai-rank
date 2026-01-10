@@ -4,33 +4,10 @@ import { db, users } from '@/db';
 import { eq } from 'drizzle-orm';
 import { generateApiKey } from '@/lib/auth';
 import { logApiKeyGenerated } from '@/lib/audit';
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes } from 'crypto';
 
-/**
- * Temporary store for CLI auth states
- * In production, use Redis or a database table
- */
-const cliAuthStates = new Map<
-  string,
-  {
-    redirectUri: string;
-    state: string;
-    createdAt: number;
-    userId?: string;
-    apiKey?: string;
-  }
->();
-
-// Clean up expired states (older than 5 minutes)
-function cleanupExpiredStates() {
-  const now = Date.now();
-  const expiryMs = 5 * 60 * 1000; // 5 minutes
-  for (const [key, value] of cliAuthStates.entries()) {
-    if (now - value.createdAt > expiryMs) {
-      cliAuthStates.delete(key);
-    }
-  }
-}
+// Cookie name for CLI auth state
+const CLI_AUTH_COOKIE = 'moai_cli_auth';
 
 /**
  * GET /api/auth/cli
@@ -45,8 +22,6 @@ function cleanupExpiredStates() {
  * 4. Create/get user, generate API key, redirect to CLI's redirect_uri
  */
 export async function GET(request: NextRequest) {
-  cleanupExpiredStates();
-
   const searchParams = request.nextUrl.searchParams;
   const redirectUri = searchParams.get('redirect_uri');
   const state = searchParams.get('state');
@@ -93,29 +68,44 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Store the auth state
-  const stateKey = createHash('sha256').update(state).digest('hex').slice(0, 32);
-  cliAuthStates.set(stateKey, {
-    redirectUri,
-    state,
-    createdAt: Date.now(),
-  });
-
   // Check if user is already authenticated
   const { userId: clerkId } = await auth();
 
   if (!clerkId) {
-    // Not authenticated - redirect to sign-in with return URL
+    // Not authenticated - store state in cookie and redirect to sign-in
     const callbackUrl = new URL('/api/auth/cli/callback', request.url);
-    callbackUrl.searchParams.set('state_key', stateKey);
 
     const signInUrl = new URL('/sign-in', request.url);
     signInUrl.searchParams.set('redirect_url', callbackUrl.toString());
 
-    return NextResponse.redirect(signInUrl);
+    const response = NextResponse.redirect(signInUrl);
+
+    // Store CLI auth state in encrypted cookie
+    const cookieData = JSON.stringify({ redirectUri, state, createdAt: Date.now() });
+    response.cookies.set(CLI_AUTH_COOKIE, Buffer.from(cookieData).toString('base64'), {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 300, // 5 minutes
+      path: '/',
+    });
+
+    return response;
   }
 
   // User is authenticated - process the CLI auth
+  return processCliAuth(request, clerkId, redirectUri, state);
+}
+
+/**
+ * Process CLI authentication for an authenticated user
+ */
+async function processCliAuth(
+  request: NextRequest,
+  clerkId: string,
+  redirectUri: string,
+  state: string
+): Promise<NextResponse> {
   try {
     const user = await currentUser();
     if (!user) {
@@ -136,19 +126,11 @@ export async function GET(request: NextRequest) {
       (account) => account.provider === 'oauth_github'
     );
 
-    if (!githubAccount) {
-      // Redirect to sign-in to link GitHub
-      const callbackUrl = new URL('/api/auth/cli/callback', request.url);
-      callbackUrl.searchParams.set('state_key', stateKey);
-
-      const signInUrl = new URL('/sign-in', request.url);
-      signInUrl.searchParams.set('redirect_url', callbackUrl.toString());
-
-      return NextResponse.redirect(signInUrl);
-    }
+    const githubUsername = githubAccount?.username || user.username || 'user';
+    const githubId = githubAccount?.externalId || clerkId;
 
     // Check if user exists in database
-    let dbUser = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
+    const dbUser = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
 
     let apiKey: string;
 
@@ -161,8 +143,8 @@ export async function GET(request: NextRequest) {
         .insert(users)
         .values({
           clerkId,
-          githubId: githubAccount.externalId || clerkId,
-          githubUsername: githubAccount.username || user.username || 'unknown',
+          githubId,
+          githubUsername,
           githubAvatarUrl: user.imageUrl,
           apiKeyHash: hash,
           apiKeyPrefix: prefix,
@@ -189,30 +171,18 @@ export async function GET(request: NextRequest) {
       await logApiKeyGenerated(existingUser.id, prefix, request);
     }
 
-    // Get stored state info
-    const stateInfo = cliAuthStates.get(stateKey);
-    if (!stateInfo) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Auth state expired or invalid',
-          },
-        },
-        { status: 400 }
-      );
-    }
-
-    // Clean up state
-    cliAuthStates.delete(stateKey);
-
     // Redirect to CLI's callback with API key
-    const cliCallbackUrl = new URL(stateInfo.redirectUri);
+    const cliCallbackUrl = new URL(redirectUri);
     cliCallbackUrl.searchParams.set('api_key', apiKey);
-    cliCallbackUrl.searchParams.set('state', stateInfo.state);
+    cliCallbackUrl.searchParams.set('state', state);
+    cliCallbackUrl.searchParams.set('username', githubUsername);
 
-    return NextResponse.redirect(cliCallbackUrl);
+    const response = NextResponse.redirect(cliCallbackUrl);
+
+    // Clear the CLI auth cookie
+    response.cookies.delete(CLI_AUTH_COOKIE);
+
+    return response;
   } catch (error) {
     console.error('[CLI Auth] Error:', error);
     return NextResponse.json(
@@ -221,6 +191,7 @@ export async function GET(request: NextRequest) {
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Failed to process CLI authentication',
+          details: error instanceof Error ? error.message : 'Unknown error',
         },
       },
       { status: 500 }
@@ -228,7 +199,5 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * Export state store for callback handler
- */
-export { cliAuthStates };
+// Export cookie name for callback handler
+export { CLI_AUTH_COOKIE };
