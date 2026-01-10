@@ -34,9 +34,9 @@ Claude Code has transformed how developers write code, but there's no way to mea
 
 ## :rocket: Getting Started
 
-### 1. Sign Up via GitHub
+### 1. Sign Up via GitHub or Google
 
-Visit [rank.mo.ai.kr](https://rank.mo.ai.kr) and sign in with your GitHub account. We use GitHub OAuth for authentication to ensure secure, password-less access.
+Visit [rank.mo.ai.kr](https://rank.mo.ai.kr) and sign in with your GitHub or Google account. We use OAuth for authentication to ensure secure, password-less access.
 
 ### 2. Generate Your API Key
 
@@ -68,19 +68,19 @@ MoAI Rank provides a powerful CLI interface through MoAI-ADK.
 
 ### Command Reference
 
-| Command                 | Description                       | Options               |
-| ----------------------- | --------------------------------- | --------------------- |
-| `moai rank register`    | Register with GitHub OAuth        | -                     |
-| `moai rank status`      | Check your current rank and stats | -                     |
-| `moai rank leaderboard` | View the leaderboard              | `--period`, `--limit` |
-| `moai rank verify`      | Verify your API key is valid      | -                     |
-| `moai rank logout`      | Delete stored credentials         | -                     |
+| Command                 | Description                         | Options               |
+| ----------------------- | ----------------------------------- | --------------------- |
+| `moai rank register`    | Register with OAuth (GitHub/Google) | -                     |
+| `moai rank status`      | Check your current rank and stats   | -                     |
+| `moai rank leaderboard` | View the leaderboard                | `--period`, `--limit` |
+| `moai rank verify`      | Verify your API key is valid        | -                     |
+| `moai rank logout`      | Delete stored credentials           | -                     |
 
 ### Detailed Command Usage
 
 #### Register
 
-Start the GitHub OAuth flow to register your account and obtain an API key.
+Start the OAuth flow to register your account and obtain an API key.
 
 ```bash
 moai rank register
@@ -88,8 +88,8 @@ moai rank register
 
 This will:
 
-1. Open your browser for GitHub authentication
-2. Link your GitHub account to MoAI Rank
+1. Open your browser for OAuth authentication (GitHub or Google)
+2. Link your account to MoAI Rank
 3. Generate and store your API key locally
 
 #### Check Status
@@ -224,7 +224,7 @@ Learn more at [github.com/moai-project/moai-adk](https://github.com/moai-project
 - **Framework**: Next.js 16 with App Router
 - **UI**: React 19, Tailwind CSS, Radix UI
 - **Database**: Neon PostgreSQL with Drizzle ORM
-- **Authentication**: Clerk (GitHub OAuth)
+- **Authentication**: Clerk (GitHub & Google OAuth)
 - **Deployment**: Vercel
 - **Package Manager**: Bun
 - **Monorepo**: Turborepo

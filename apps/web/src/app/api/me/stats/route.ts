@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { db, users, rankings, dailyAggregates, sessions } from "@/db";
+import { db, users, rankings, dailyAggregates, } from "@/db";
 import { eq, desc, and, sql, gte } from "drizzle-orm";
 import { successResponse, Errors } from "@/lib/api-response";
 

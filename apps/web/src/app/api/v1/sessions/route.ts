@@ -1,7 +1,7 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { db, sessions, tokenUsage, dailyAggregates } from "@/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, sql, desc, avg } from "drizzle-orm";
 import {
   successResponse,
   Errors,
@@ -17,7 +17,29 @@ import {
   logInvalidApiKey,
   logInvalidHmacSignature,
   logSecurityEvent,
+  logRateLimitExceeded,
 } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limiter";
+
+/**
+ * Security Constants
+ */
+// Claude context window limit
+const MAX_INPUT_TOKENS = 200000;
+// Claude output limit
+const MAX_OUTPUT_TOKENS = 16000;
+// Claude cache limits
+const MAX_CACHE_TOKENS = 200000;
+// Minimum time between sessions (1 minute)
+const MIN_SESSION_INTERVAL_MS = 60000;
+// Anomaly detection threshold (10x average)
+const ANOMALY_THRESHOLD_MULTIPLIER = 10;
+
+/**
+ * V010: Session timestamp tolerance in milliseconds (5 minutes)
+ * Sessions must be submitted within +/- 5 minutes of current time
+ */
+const SESSION_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
 
 /**
  * Session creation request schema
@@ -25,12 +47,24 @@ import {
 const CreateSessionSchema = z.object({
   sessionHash: z.string().length(64, "Invalid session hash"),
   anonymousProjectId: z.string().max(16).optional(),
-  endedAt: z.string().datetime(),
+  // V010: Add bounds checking for endedAt timestamp to prevent replay attacks
+  endedAt: z.string().datetime().refine(
+    (val) => {
+      const sessionDate = new Date(val);
+      const now = Date.now();
+      const timeDiff = Math.abs(sessionDate.getTime() - now);
+      return timeDiff <= SESSION_TIMESTAMP_TOLERANCE_MS;
+    },
+    {
+      message: "Session endedAt must be within 5 minutes of current time",
+    }
+  ),
   modelName: z.string().max(50).optional(),
-  inputTokens: z.number().int().min(0),
-  outputTokens: z.number().int().min(0),
-  cacheCreationTokens: z.number().int().min(0).optional().default(0),
-  cacheReadTokens: z.number().int().min(0).optional().default(0),
+  // V001: Add maximum token validation to prevent abuse
+  inputTokens: z.number().int().min(0).max(MAX_INPUT_TOKENS, "Input tokens exceed Claude context limit"),
+  outputTokens: z.number().int().min(0).max(MAX_OUTPUT_TOKENS, "Output tokens exceed Claude output limit"),
+  cacheCreationTokens: z.number().int().min(0).max(MAX_CACHE_TOKENS, "Cache creation tokens exceed limit").optional().default(0),
+  cacheReadTokens: z.number().int().min(0).max(MAX_CACHE_TOKENS, "Cache read tokens exceed limit").optional().default(0),
 });
 
 /**
@@ -82,6 +116,15 @@ export async function POST(request: NextRequest) {
       return Errors.unauthorized("Invalid API key");
     }
 
+    // V002 + V007: Distributed rate limiting - 100 requests per minute per user
+    const rateLimitResult = await checkRateLimit(user.id);
+    if (!rateLimitResult.success) {
+      await logRateLimitExceeded(user.id, "/api/v1/sessions", request);
+      return Errors.rateLimited(
+        `Rate limit exceeded. Try again after ${new Date(rateLimitResult.reset).toISOString()}`
+      );
+    }
+
     // Validate timestamp and signature presence
     if (!timestamp || !signature) {
       await logInvalidHmacSignature(
@@ -124,6 +167,57 @@ export async function POST(request: NextRequest) {
     }
 
     const sessionData = parseResult.data;
+
+    // V003: Session frequency validation - minimum time between sessions
+    const lastSession = await db
+      .select({ endedAt: sessions.endedAt })
+      .from(sessions)
+      .where(eq(sessions.userId, user.id))
+      .orderBy(desc(sessions.endedAt))
+      .limit(1);
+
+    if (
+      lastSession.length > 0 &&
+      Date.now() - lastSession[0].endedAt.getTime() < MIN_SESSION_INTERVAL_MS
+    ) {
+      await logSecurityEvent("suspicious_activity", user.id, {
+        reason: "Session submitted too soon",
+        lastSessionEndedAt: lastSession[0].endedAt.toISOString(),
+        timeSinceLastSession: Date.now() - lastSession[0].endedAt.getTime(),
+        minimumInterval: MIN_SESSION_INTERVAL_MS,
+      });
+      return Errors.validationError(
+        "Session submitted too soon after previous session. Please wait at least 1 minute."
+      );
+    }
+
+    // V005: Anomaly detection - flag suspicious token counts
+    const submittedTokens = sessionData.inputTokens + sessionData.outputTokens;
+    const userAvgResult = await db
+      .select({
+        avgTokens: avg(
+          sql`${tokenUsage.inputTokens} + ${tokenUsage.outputTokens}`
+        ),
+      })
+      .from(tokenUsage)
+      .where(eq(tokenUsage.userId, user.id));
+
+    const avgTokens = userAvgResult[0]?.avgTokens
+      ? Number(userAvgResult[0].avgTokens)
+      : 0;
+
+    // Flag if submitted tokens are >10x the user's historical average
+    if (avgTokens > 0 && submittedTokens > avgTokens * ANOMALY_THRESHOLD_MULTIPLIER) {
+      await logSecurityEvent("suspicious_activity", user.id, {
+        reason: "Token count anomaly detected",
+        submittedTokens,
+        averageTokens: avgTokens,
+        ratio: submittedTokens / avgTokens,
+        threshold: ANOMALY_THRESHOLD_MULTIPLIER,
+      });
+      // Note: We log but don't block - this allows legitimate high-usage sessions
+      // while creating an audit trail for investigation if needed
+    }
 
     // Recalculate session hash server-side
     const serverHash = computeSessionHash(user.id, user.userSalt, {

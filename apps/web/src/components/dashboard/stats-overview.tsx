@@ -1,6 +1,6 @@
 "use client";
 
-import { Trophy, Zap, Activity, TrendingUp, Flame } from "lucide-react";
+import { Trophy, Zap, Activity, Flame } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatNumber, formatPercentage } from "@/lib/utils";

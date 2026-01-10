@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import type { ApiErrorCode } from "@moai-rank/shared";
+import { NextResponse } from 'next/server';
+import type { ApiErrorCode } from '@moai-rank/shared';
 
 /**
  * Standard API response structure
@@ -68,27 +68,54 @@ export function errorResponse(
  * Common error responses
  */
 export const Errors = {
-  unauthorized: (message = "Authentication required") =>
-    errorResponse("UNAUTHORIZED", message, 401),
+  unauthorized: (message = 'Authentication required') =>
+    errorResponse('UNAUTHORIZED', message, 401),
 
-  forbidden: (message = "Access denied") =>
-    errorResponse("FORBIDDEN", message, 403),
+  forbidden: (message = 'Access denied') => errorResponse('FORBIDDEN', message, 403),
 
-  notFound: (resource = "Resource") =>
-    errorResponse("NOT_FOUND", `${resource} not found`, 404),
+  notFound: (resource = 'Resource') => errorResponse('NOT_FOUND', `${resource} not found`, 404),
 
   validationError: (message: string, details?: Record<string, unknown>) =>
-    errorResponse("VALIDATION_ERROR", message, 400, details),
+    errorResponse('VALIDATION_ERROR', message, 400, details),
 
-  rateLimited: (message = "Rate limit exceeded") =>
-    errorResponse("RATE_LIMITED", message, 429),
+  rateLimited: (message = 'Rate limit exceeded') => errorResponse('RATE_LIMITED', message, 429),
 
-  internalError: (message = "Internal server error") =>
-    errorResponse("INTERNAL_ERROR", message, 500),
+  internalError: (message = 'Internal server error') =>
+    errorResponse('INTERNAL_ERROR', message, 500),
 
-  serviceUnavailable: (message = "Service temporarily unavailable") =>
-    errorResponse("SERVICE_UNAVAILABLE", message, 503),
+  serviceUnavailable: (message = 'Service temporarily unavailable') =>
+    errorResponse('SERVICE_UNAVAILABLE', message, 503),
 };
+
+/**
+ * Rate limit response with Retry-After header
+ * V014: Proper rate limit response with RFC 7231 compliant headers
+ *
+ * @param resetTime - Unix timestamp when the rate limit resets
+ */
+export function rateLimitResponse(resetTime: number): NextResponse<ApiResponse<never>> {
+  const retryAfterSeconds = Math.max(1, Math.ceil((resetTime - Date.now()) / 1000));
+
+  return NextResponse.json(
+    {
+      success: false,
+      error: {
+        code: 'RATE_LIMITED' as ApiErrorCode,
+        message: 'Rate limit exceeded. Please try again later.',
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    },
+    {
+      status: 429,
+      headers: addCorsHeaders({
+        'Retry-After': retryAfterSeconds.toString(),
+        'X-RateLimit-Reset': resetTime.toString(),
+      }),
+    }
+  );
+}
 
 /**
  * Add CORS headers for CLI access
@@ -97,13 +124,10 @@ function addCorsHeaders(existingHeaders?: HeadersInit): Headers {
   const headers = new Headers(existingHeaders);
 
   // Allow CLI access from any origin
-  headers.set("Access-Control-Allow-Origin", "*");
-  headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
-  headers.set(
-    "Access-Control-Allow-Headers",
-    "Content-Type, X-API-Key, X-Timestamp, X-Signature"
-  );
-  headers.set("Access-Control-Max-Age", "86400");
+  headers.set('Access-Control-Allow-Origin', '*');
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, X-Timestamp, X-Signature');
+  headers.set('Access-Control-Max-Age', '86400');
 
   return headers;
 }
@@ -133,11 +157,7 @@ export interface PaginationMeta {
 /**
  * Create pagination metadata
  */
-export function createPaginationMeta(
-  page: number,
-  limit: number,
-  total: number
-): PaginationMeta {
+export function createPaginationMeta(page: number, limit: number, total: number): PaginationMeta {
   const totalPages = Math.ceil(total / limit);
   return {
     page,

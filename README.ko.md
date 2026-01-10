@@ -34,9 +34,9 @@ Claude Code는 개발자들의 코딩 방식을 혁신적으로 바꾸고 있지
 
 ## :rocket: 시작하기
 
-### 1. GitHub으로 가입
+### 1. GitHub 또는 Google로 가입
 
-[rank.mo.ai.kr](https://rank.mo.ai.kr)에 방문해서 GitHub 계정으로 로그인하세요. 비밀번호 없이 안전하게 접속할 수 있도록 GitHub OAuth를 사용합니다.
+[rank.mo.ai.kr](https://rank.mo.ai.kr)에 방문해서 GitHub 또는 Google 계정으로 로그인하세요. 비밀번호 없이 안전하게 접속할 수 있도록 OAuth를 사용합니다.
 
 ### 2. API 키 발급
 
@@ -68,19 +68,19 @@ MoAI Rank는 MoAI-ADK를 통해 강력한 CLI 인터페이스를 제공합니다
 
 ### 명령어 요약
 
-| 명령어                  | 설명                   | 옵션                  |
-| ----------------------- | ---------------------- | --------------------- |
-| `moai rank register`    | GitHub OAuth로 등록    | -                     |
-| `moai rank status`      | 현재 순위 및 통계 확인 | -                     |
-| `moai rank leaderboard` | 리더보드 조회          | `--period`, `--limit` |
-| `moai rank verify`      | API 키 유효성 검증     | -                     |
-| `moai rank logout`      | 저장된 인증 정보 삭제  | -                     |
+| 명령어                  | 설명                         | 옵션                  |
+| ----------------------- | ---------------------------- | --------------------- |
+| `moai rank register`    | OAuth로 등록 (GitHub/Google) | -                     |
+| `moai rank status`      | 현재 순위 및 통계 확인       | -                     |
+| `moai rank leaderboard` | 리더보드 조회                | `--period`, `--limit` |
+| `moai rank verify`      | API 키 유효성 검증           | -                     |
+| `moai rank logout`      | 저장된 인증 정보 삭제        | -                     |
 
 ### 상세 명령어 사용법
 
 #### 등록 (Register)
 
-GitHub OAuth 흐름을 시작하여 계정을 등록하고 API 키를 발급받습니다.
+OAuth 흐름을 시작하여 계정을 등록하고 API 키를 발급받습니다.
 
 ```bash
 moai rank register
@@ -88,8 +88,8 @@ moai rank register
 
 실행하면:
 
-1. 브라우저가 열리며 GitHub 인증 진행
-2. GitHub 계정이 MoAI Rank에 연결
+1. 브라우저가 열리며 OAuth 인증 진행 (GitHub 또는 Google)
+2. 계정이 MoAI Rank에 연결
 3. API 키가 생성되어 로컬에 저장
 
 #### 상태 확인 (Status)
@@ -224,7 +224,7 @@ moai init  # 프로젝트에서 초기화
 - **프레임워크**: Next.js 16 (App Router)
 - **UI**: React 19, Tailwind CSS, Radix UI
 - **데이터베이스**: Neon PostgreSQL + Drizzle ORM
-- **인증**: Clerk (GitHub OAuth)
+- **인증**: Clerk (GitHub & Google OAuth)
 - **배포**: Vercel
 - **패키지 매니저**: Bun
 - **모노레포**: Turborepo

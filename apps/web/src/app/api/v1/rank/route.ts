@@ -1,13 +1,10 @@
-import { NextRequest } from "next/server";
-import { db, rankings, dailyAggregates } from "@/db";
-import { eq, desc, and, sql } from "drizzle-orm";
-import {
-  successResponse,
-  Errors,
-  corsOptionsResponse,
-} from "@/lib/api-response";
-import { validateApiKey, extractApiKey } from "@/lib/auth";
-import { logInvalidApiKey } from "@/lib/audit";
+import type { NextRequest } from 'next/server';
+import { db, rankings, dailyAggregates } from '@/db';
+import { eq, desc, sql } from 'drizzle-orm';
+import { successResponse, Errors, corsOptionsResponse } from '@/lib/api-response';
+import { validateApiKey, extractApiKey } from '@/lib/auth';
+import { logInvalidApiKey, logRateLimitExceeded } from '@/lib/audit';
+import { checkRateLimit } from '@/lib/rate-limiter';
 
 /**
  * User rank response for CLI
@@ -50,7 +47,7 @@ export async function GET(request: NextRequest) {
     const apiKey = extractApiKey(request.headers);
 
     if (!apiKey) {
-      return Errors.unauthorized("API key required");
+      return Errors.unauthorized('API key required');
     }
 
     const user = await validateApiKey(apiKey);
@@ -58,8 +55,17 @@ export async function GET(request: NextRequest) {
     if (!user) {
       // Log invalid API key attempt
       const prefix = apiKey.substring(0, 16);
-      await logInvalidApiKey(prefix, "/api/v1/rank", request);
-      return Errors.unauthorized("Invalid API key");
+      await logInvalidApiKey(prefix, '/api/v1/rank', request);
+      return Errors.unauthorized('Invalid API key');
+    }
+
+    // Distributed rate limiting - 100 requests per minute per user
+    const rateLimitResult = await checkRateLimit(user.id);
+    if (!rateLimitResult.success) {
+      await logRateLimitExceeded(user.id, '/api/v1/rank', request);
+      return Errors.rateLimited(
+        `Rate limit exceeded. Try again after ${new Date(rateLimitResult.reset).toISOString()}`
+      );
     }
 
     // Get user's rankings for all periods
@@ -119,10 +125,10 @@ export async function GET(request: NextRequest) {
     const response: UserRankResponse = {
       username: user.githubUsername,
       rankings: {
-        daily: rankingMap["daily"] ?? null,
-        weekly: rankingMap["weekly"] ?? null,
-        monthly: rankingMap["monthly"] ?? null,
-        allTime: rankingMap["all_time"] ?? null,
+        daily: rankingMap['daily'] ?? null,
+        weekly: rankingMap['weekly'] ?? null,
+        monthly: rankingMap['monthly'] ?? null,
+        allTime: rankingMap['all_time'] ?? null,
       },
       stats: {
         totalTokens: totalInputTokens + totalOutputTokens,
@@ -135,7 +141,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(response);
   } catch (error) {
-    console.error("[API] V1 Rank error:", error);
+    console.error('[API] V1 Rank error:', error);
     return Errors.internalError();
   }
 }

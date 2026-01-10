@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { db, users, rankings, dailyAggregates } from "@/db";
 import { eq, desc, sql, and } from "drizzle-orm";
 import {

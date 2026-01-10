@@ -1,22 +1,23 @@
-import { db, securityAuditLog } from "@/db";
+import { db, securityAuditLog } from '@/db';
 
 /**
  * Security event types for audit logging
  */
 export type SecurityEventType =
-  | "api_key_generated"
-  | "api_key_regenerated"
-  | "api_key_validated"
-  | "api_key_invalid"
-  | "hmac_signature_invalid"
-  | "hmac_timestamp_expired"
-  | "rate_limit_exceeded"
-  | "unauthorized_access"
-  | "session_created"
-  | "session_duplicate"
-  | "user_settings_updated"
-  | "privacy_mode_changed"
-  | "suspicious_activity";
+  | 'api_key_generated'
+  | 'api_key_regenerated'
+  | 'api_key_revoked'
+  | 'api_key_validated'
+  | 'api_key_invalid'
+  | 'hmac_signature_invalid'
+  | 'hmac_timestamp_expired'
+  | 'rate_limit_exceeded'
+  | 'unauthorized_access'
+  | 'session_created'
+  | 'session_duplicate'
+  | 'user_settings_updated'
+  | 'privacy_mode_changed'
+  | 'suspicious_activity';
 
 /**
  * Details structure for different event types
@@ -51,7 +52,7 @@ export async function logSecurityEvent(
 ): Promise<void> {
   try {
     const ipAddress = request ? extractIpAddress(request) : null;
-    const userAgent = request?.headers.get("User-Agent") ?? null;
+    const userAgent = request?.headers.get('User-Agent') ?? null;
 
     await db.insert(securityAuditLog).values({
       userId: userId ?? null,
@@ -62,10 +63,10 @@ export async function logSecurityEvent(
     });
   } catch (error) {
     // Log to console but don't throw - audit logging should not break the request
-    console.error("[AUDIT] Failed to log security event:", {
+    console.error('[AUDIT] Failed to log security event:', {
       eventType,
       userId,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -78,18 +79,18 @@ function extractIpAddress(request: Request): string | null {
   const headers = request.headers;
 
   // Check common proxy headers in order of preference
-  const forwardedFor = headers.get("X-Forwarded-For");
+  const forwardedFor = headers.get('X-Forwarded-For');
   if (forwardedFor) {
     // X-Forwarded-For can contain multiple IPs, take the first one
-    return forwardedFor.split(",")[0].trim();
+    return forwardedFor.split(',')[0].trim();
   }
 
-  const realIp = headers.get("X-Real-IP");
+  const realIp = headers.get('X-Real-IP');
   if (realIp) {
     return realIp.trim();
   }
 
-  const cfConnectingIp = headers.get("CF-Connecting-IP");
+  const cfConnectingIp = headers.get('CF-Connecting-IP');
   if (cfConnectingIp) {
     return cfConnectingIp.trim();
   }
@@ -105,12 +106,7 @@ export async function logApiKeyGenerated(
   apiKeyPrefix: string,
   request?: Request
 ): Promise<void> {
-  await logSecurityEvent(
-    "api_key_generated",
-    userId,
-    { apiKeyPrefix },
-    request
-  );
+  await logSecurityEvent('api_key_generated', userId, { apiKeyPrefix }, request);
 }
 
 /**
@@ -123,11 +119,31 @@ export async function logApiKeyRegenerated(
   request?: Request
 ): Promise<void> {
   await logSecurityEvent(
-    "api_key_regenerated",
+    'api_key_regenerated',
     userId,
     {
       oldApiKeyPrefix: oldPrefix,
       newApiKeyPrefix: newPrefix,
+    },
+    request
+  );
+}
+
+/**
+ * Log API key revocation event
+ */
+export async function logApiKeyRevoked(
+  userId: string,
+  apiKeyPrefix: string,
+  reason?: string,
+  request?: Request
+): Promise<void> {
+  await logSecurityEvent(
+    'api_key_revoked',
+    userId,
+    {
+      apiKeyPrefix,
+      reason: reason ?? 'user_requested',
     },
     request
   );
@@ -142,10 +158,10 @@ export async function logInvalidApiKey(
   request?: Request
 ): Promise<void> {
   await logSecurityEvent(
-    "api_key_invalid",
+    'api_key_invalid',
     null,
     {
-      apiKeyPrefix: apiKeyPrefix ?? "unknown",
+      apiKeyPrefix: apiKeyPrefix ?? 'unknown',
       endpoint,
     },
     request
@@ -162,7 +178,7 @@ export async function logInvalidHmacSignature(
   request?: Request
 ): Promise<void> {
   await logSecurityEvent(
-    "hmac_signature_invalid",
+    'hmac_signature_invalid',
     userId,
     {
       endpoint,
@@ -180,12 +196,7 @@ export async function logRateLimitExceeded(
   endpoint: string,
   request?: Request
 ): Promise<void> {
-  await logSecurityEvent(
-    "rate_limit_exceeded",
-    userId,
-    { endpoint },
-    request
-  );
+  await logSecurityEvent('rate_limit_exceeded', userId, { endpoint }, request);
 }
 
 /**
@@ -196,12 +207,7 @@ export async function logUserSettingsUpdated(
   changes: Record<string, { old: unknown; new: unknown }>,
   request?: Request
 ): Promise<void> {
-  await logSecurityEvent(
-    "user_settings_updated",
-    userId,
-    { changes },
-    request
-  );
+  await logSecurityEvent('user_settings_updated', userId, { changes }, request);
 }
 
 /**
@@ -213,7 +219,7 @@ export async function logPrivacyModeChanged(
   request?: Request
 ): Promise<void> {
   await logSecurityEvent(
-    "privacy_mode_changed",
+    'privacy_mode_changed',
     userId,
     {
       oldValue: !newValue,

@@ -1,4 +1,4 @@
-import { createHmac, createHash, randomBytes } from "crypto";
+import { createHmac, createHash, randomBytes, timingSafeEqual as cryptoTimingSafeEqual } from "crypto";
 import { db, users, type User } from "@/db";
 import { eq } from "drizzle-orm";
 
@@ -80,7 +80,7 @@ export function verifyHmacSignature(
   maxAgeSeconds = 300
 ): boolean {
   // Validate timestamp is not too old
-  const requestTime = parseInt(timestamp, 10);
+  const requestTime = Number.parseInt(timestamp, 10);
   if (isNaN(requestTime)) {
     return false;
   }
@@ -101,19 +101,33 @@ export function verifyHmacSignature(
 }
 
 /**
- * Constant-time string comparison to prevent timing attacks
+ * V009: Constant-time string comparison to prevent timing attacks
+ *
+ * Uses Node.js crypto.timingSafeEqual with proper padding to prevent
+ * length oracle attacks. Both strings are padded to equal length before
+ * comparison to ensure constant-time execution regardless of input lengths.
+ *
+ * @param provided - The user-provided signature
+ * @param expected - The expected signature computed server-side
+ * @returns true if signatures match, false otherwise
  */
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
+function timingSafeEqual(provided: string, expected: string): boolean {
+  // Pad both strings to the same length to prevent length oracle attacks
+  // HMAC-SHA256 signatures are always 64 hex characters, but we handle
+  // any length for defense in depth
+  const maxLength = Math.max(provided.length, expected.length, 64);
 
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
+  const providedPadded = provided.padEnd(maxLength, '\0');
+  const expectedPadded = expected.padEnd(maxLength, '\0');
 
-  return result === 0;
+  const providedBuf = Buffer.from(providedPadded, 'utf8');
+  const expectedBuf = Buffer.from(expectedPadded, 'utf8');
+
+  // Use Node.js crypto.timingSafeEqual for constant-time comparison
+  // Also verify original lengths match to prevent false positives from padding
+  return providedBuf.length === expectedBuf.length &&
+    cryptoTimingSafeEqual(providedBuf, expectedBuf) &&
+    provided.length === expected.length;
 }
 
 /**

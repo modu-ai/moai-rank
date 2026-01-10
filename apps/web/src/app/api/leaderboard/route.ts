@@ -1,23 +1,20 @@
-import { NextRequest } from "next/server";
-import { z } from "zod";
-import { db, users, rankings } from "@/db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import type { NextRequest } from 'next/server';
+import { z } from 'zod';
+import { db, users, rankings } from '@/db';
+import { eq, and, sql } from 'drizzle-orm';
 import {
-  successResponse,
   Errors,
   createPaginationMeta,
   paginatedResponse,
   corsOptionsResponse,
-} from "@/lib/api-response";
+} from '@/lib/api-response';
+import { checkPublicRateLimit, extractIpAddress } from '@/lib/rate-limiter';
 
 /**
  * Query parameters schema for leaderboard
  */
 const LeaderboardQuerySchema = z.object({
-  period: z
-    .enum(["daily", "weekly", "monthly", "all_time"])
-    .optional()
-    .default("weekly"),
+  period: z.enum(['daily', 'weekly', 'monthly', 'all_time']).optional().default('weekly'),
   limit: z.coerce.number().int().min(1).max(100).optional().default(50),
   offset: z.coerce.number().int().min(0).optional().default(0),
 });
@@ -50,17 +47,26 @@ interface LeaderboardEntry {
  */
 export async function GET(request: NextRequest) {
   try {
+    // IP-based rate limiting for public endpoint
+    const ipAddress = extractIpAddress(request.headers);
+    const rateLimitResult = await checkPublicRateLimit(ipAddress);
+    if (!rateLimitResult.success) {
+      return Errors.rateLimited(
+        `Rate limit exceeded. Try again after ${new Date(rateLimitResult.reset).toISOString()}`
+      );
+    }
+
     const { searchParams } = new URL(request.url);
 
     // Parse and validate query parameters
     const parseResult = LeaderboardQuerySchema.safeParse({
-      period: searchParams.get("period"),
-      limit: searchParams.get("limit"),
-      offset: searchParams.get("offset"),
+      period: searchParams.get('period'),
+      limit: searchParams.get('limit'),
+      offset: searchParams.get('offset'),
     });
 
     if (!parseResult.success) {
-      return Errors.validationError("Invalid query parameters", {
+      return Errors.validationError('Invalid query parameters', {
         errors: parseResult.error.flatten().fieldErrors,
       });
     }
@@ -85,12 +91,7 @@ export async function GET(request: NextRequest) {
       })
       .from(rankings)
       .innerJoin(users, eq(rankings.userId, users.id))
-      .where(
-        and(
-          eq(rankings.periodType, period),
-          eq(rankings.periodStart, periodStart)
-        )
-      )
+      .where(and(eq(rankings.periodType, period), eq(rankings.periodStart, periodStart)))
       .orderBy(rankings.rankPosition)
       .limit(limit)
       .offset(offset);
@@ -99,19 +100,14 @@ export async function GET(request: NextRequest) {
     const countResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(rankings)
-      .where(
-        and(
-          eq(rankings.periodType, period),
-          eq(rankings.periodStart, periodStart)
-        )
-      );
+      .where(and(eq(rankings.periodType, period), eq(rankings.periodStart, periodStart)));
 
     const total = Number(countResult[0]?.count ?? 0);
 
     // Transform data respecting privacy settings
     const entries: LeaderboardEntry[] = rankingsData.map((r) => ({
       rank: r.rank,
-      userId: r.privacyMode ? "private" : r.userId!,
+      userId: r.privacyMode ? 'private' : r.userId!,
       username: r.privacyMode ? `User #${r.rank}` : r.username,
       avatarUrl: r.privacyMode ? null : r.avatarUrl,
       totalTokens: Number(r.totalTokens),
@@ -121,15 +117,11 @@ export async function GET(request: NextRequest) {
       isPrivate: r.privacyMode ?? false,
     }));
 
-    const pagination = createPaginationMeta(
-      Math.floor(offset / limit) + 1,
-      limit,
-      total
-    );
+    const pagination = createPaginationMeta(Math.floor(offset / limit) + 1, limit, total);
 
     return paginatedResponse(entries, pagination);
   } catch (error) {
-    console.error("[API] Leaderboard error:", error);
+    console.error('[API] Leaderboard error:', error);
     return Errors.internalError();
   }
 }
@@ -149,23 +141,23 @@ function getPeriodStart(period: string): string {
   const now = new Date();
 
   switch (period) {
-    case "daily":
-      return now.toISOString().split("T")[0];
+    case 'daily':
+      return now.toISOString().split('T')[0];
 
-    case "weekly": {
+    case 'weekly': {
       const dayOfWeek = now.getDay();
       const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
       const monday = new Date(now.setDate(diff));
-      return monday.toISOString().split("T")[0];
+      return monday.toISOString().split('T')[0];
     }
 
-    case "monthly":
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    case 'monthly':
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
-    case "all_time":
-      return "2024-01-01"; // Fixed start date for all-time rankings
+    case 'all_time':
+      return '2024-01-01'; // Fixed start date for all-time rankings
 
     default:
-      return now.toISOString().split("T")[0];
+      return now.toISOString().split('T')[0];
   }
 }

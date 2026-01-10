@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Trophy, Medal, Award, User, Eye, EyeOff } from "lucide-react";
+import { Trophy, Medal, Award, User, EyeOff } from "lucide-react";
 import {
   Table,
   TableBody,
