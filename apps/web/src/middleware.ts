@@ -144,8 +144,32 @@ function rateLimitResponse(resetTime: number): NextResponse {
  * Note: middleware.ts is deprecated in Next.js 16, but clerkMiddleware
  * does not yet support the new proxy.ts pattern.
  */
+/**
+ * Check if the request is for an API route or other non-locale paths
+ */
+function shouldSkipIntlMiddleware(pathname: string): boolean {
+  // Skip intl middleware for API routes, webhooks, and internal Next.js paths
+  return (
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/trpc/') ||
+    pathname.includes('.')
+  );
+}
+
 export default clerkMiddleware(async (auth, request) => {
-  // 1. Apply next-intl middleware first for locale handling
+  const { pathname } = request.nextUrl;
+
+  // 1. Skip intl middleware for API and other non-locale routes
+  if (shouldSkipIntlMiddleware(pathname)) {
+    // For API routes, skip directly to Clerk auth
+    if (!isPublicRoute(request)) {
+      await auth.protect();
+    }
+    return;
+  }
+
+  // 2. Apply next-intl middleware for page routes
   const intlResponse = intlMiddleware(request);
 
   // If intl middleware returned a response (redirect), use it
