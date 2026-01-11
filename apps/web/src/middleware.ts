@@ -3,16 +3,13 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import createMiddleware from 'next-intl/middleware';
 import { type NextRequest, NextResponse } from 'next/server';
-import { defaultLocale, locales } from './i18n/config';
+import { routing } from './i18n/routing';
 
 /**
  * Next-intl middleware for locale handling
+ * Uses routing config from i18n/routing.ts for consistency
  */
-const intlMiddleware = createMiddleware({
-  locales,
-  defaultLocale,
-  localePrefix: 'as-needed',
-});
+const intlMiddleware = createMiddleware(routing);
 
 /**
  * V009: Edge Middleware with Rate Limiting
@@ -140,6 +137,13 @@ function rateLimitResponse(resetTime: number): NextResponse {
   );
 }
 
+/**
+ * V009: Edge Middleware with Rate Limiting
+ *
+ * V014: Keeping middleware.ts for Next.js 16.1.1 compatibility with Clerk
+ * Note: middleware.ts is deprecated in Next.js 16, but clerkMiddleware
+ * does not yet support the new proxy.ts pattern.
+ */
 export default clerkMiddleware(async (auth, request) => {
   // 1. Apply next-intl middleware first for locale handling
   const intlResponse = intlMiddleware(request);
@@ -166,7 +170,7 @@ export default clerkMiddleware(async (auth, request) => {
         }
       } catch (error) {
         // Redis error - log and continue (fail open)
-        console.warn('[Middleware] Edge rate limit check failed:', error);
+        console.warn('[Proxy] Edge rate limit check failed:', error);
       }
     }
   }
@@ -177,6 +181,10 @@ export default clerkMiddleware(async (auth, request) => {
   }
 });
 
+/**
+ * Proxy configuration
+ * V014: Updated matcher config name for Next.js 16
+ */
 export const config = {
   matcher: [
     // Skip Next.js internals and static files
