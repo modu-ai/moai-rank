@@ -1,7 +1,18 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
-import { NextResponse, type NextRequest } from 'next/server';
+import createMiddleware from 'next-intl/middleware';
+import { type NextRequest, NextResponse } from 'next/server';
+import { defaultLocale, locales } from './i18n/config';
+
+/**
+ * Next-intl middleware for locale handling
+ */
+const intlMiddleware = createMiddleware({
+  locales,
+  defaultLocale,
+  localePrefix: 'as-needed',
+});
 
 /**
  * V009: Edge Middleware with Rate Limiting
@@ -130,7 +141,15 @@ function rateLimitResponse(resetTime: number): NextResponse {
 }
 
 export default clerkMiddleware(async (auth, request) => {
-  // V009: Apply edge rate limiting for API routes
+  // 1. Apply next-intl middleware first for locale handling
+  const intlResponse = intlMiddleware(request);
+
+  // If intl middleware returned a response (redirect), use it
+  if (intlResponse) {
+    return intlResponse;
+  }
+
+  // 2. Apply edge rate limiting for API routes
   if (isRateLimitedRoute(request) && !isRateLimitExempt(request)) {
     const rateLimiter = getEdgeRateLimiter();
 
@@ -152,7 +171,7 @@ export default clerkMiddleware(async (auth, request) => {
     }
   }
 
-  // Apply Clerk authentication for protected routes
+  // 3. Apply Clerk authentication for protected routes
   if (!isPublicRoute(request)) {
     await auth.protect();
   }
