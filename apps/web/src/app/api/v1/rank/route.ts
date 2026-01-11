@@ -125,10 +125,10 @@ export async function GET(request: NextRequest) {
     const response: UserRankResponse = {
       username: user.githubUsername,
       rankings: {
-        daily: rankingMap['daily'] ?? null,
-        weekly: rankingMap['weekly'] ?? null,
-        monthly: rankingMap['monthly'] ?? null,
-        allTime: rankingMap['all_time'] ?? null,
+        daily: rankingMap.daily ?? null,
+        weekly: rankingMap.weekly ?? null,
+        monthly: rankingMap.monthly ?? null,
+        allTime: rankingMap.all_time ?? null,
       },
       stats: {
         totalTokens: totalInputTokens + totalOutputTokens,

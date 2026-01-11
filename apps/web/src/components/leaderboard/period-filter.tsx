@@ -1,19 +1,16 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const periods = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'all_time', label: 'All Time' },
-] as const;
+const periodValues = ['daily', 'weekly', 'monthly', 'all_time'] as const;
 
 export function PeriodFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const currentPeriod = searchParams.get('period') || 'weekly';
+  const currentPeriod = searchParams.get('period') || 'daily';
+  const t = useTranslations('leaderboard');
 
   const handlePeriodChange = (period: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -22,16 +19,31 @@ export function PeriodFilter() {
     router.push(`/?${params.toString()}`);
   };
 
+  const getPeriodLabel = (value: string) => {
+    switch (value) {
+      case 'daily':
+        return t('daily');
+      case 'weekly':
+        return t('weekly');
+      case 'monthly':
+        return t('monthly');
+      case 'all_time':
+        return t('allTime');
+      default:
+        return value;
+    }
+  };
+
   return (
     <Tabs value={currentPeriod} onValueChange={handlePeriodChange}>
-      <TabsList className="h-10 w-full justify-start gap-1 bg-transparent p-0 sm:w-auto">
-        {periods.map((period) => (
+      <TabsList className="h-10 w-full justify-center gap-1 bg-transparent p-0 sm:w-auto">
+        {periodValues.map((period) => (
           <TabsTrigger
-            key={period.value}
-            value={period.value}
-            className="rounded-full border border-transparent px-4 py-2 data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            key={period}
+            value={period}
+            className="cursor-pointer rounded-full border border-transparent px-4 py-2 data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:shadow-sm"
           >
-            {period.label}
+            {getPeriodLabel(period)}
           </TabsTrigger>
         ))}
       </TabsList>

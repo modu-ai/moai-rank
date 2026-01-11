@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["icn1"],
+  "installCommand": "cd ../.. && bun install",
+  "buildCommand": "cd ../.. && bun run build --filter=@moai-rank/web",
   "headers": [
     {
       "source": "/api/(.*)",

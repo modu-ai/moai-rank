@@ -1,8 +1,9 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatNumber } from '@/lib/utils';
-import { FileCode, FilePlus, FileEdit, TrendingUp } from 'lucide-react';
+import { FilePlus, FileEdit, TrendingUp } from 'lucide-react';
 
 interface CodeMetrics {
   linesAdded: number;
@@ -19,14 +20,16 @@ interface CodeProductivityChartProps {
 }
 
 export function CodeProductivityChart({ codeMetrics, className }: CodeProductivityChartProps) {
+  const t = useTranslations('profile.codeProductivity');
+
   if (!codeMetrics) {
     return (
       <Card className={className}>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Code Productivity</CardTitle>
+          <CardTitle className="text-base">{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No code metrics available yet</p>
+          <p className="text-sm text-muted-foreground">{t('noData')}</p>
         </CardContent>
       </Card>
     );
@@ -45,44 +48,46 @@ export function CodeProductivityChart({ codeMetrics, className }: CodeProductivi
     <Card className={className}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Code Productivity</CardTitle>
+          <CardTitle className="text-base">{t('title')}</CardTitle>
           <div className="text-right">
-            <div className="text-sm font-medium">{productivity.toFixed(1)} lines/turn</div>
-            <div className="text-xs text-muted-foreground">Productivity</div>
+            <div className="text-sm font-medium">
+              {t('linesPerTurn', { count: productivity.toFixed(1) })}
+            </div>
+            <div className="text-xs text-muted-foreground">{t('productivity')}</div>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Lines Added/Deleted Bar */}
+        {/* Lines Added/Deleted Bar - GitHub-style: Green */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              Lines Added
+              <span className="h-2.5 w-2.5 rounded-full bg-[#216e39] dark:bg-[#39d353]" />
+              {t('linesAdded')}
             </span>
-            <span className="font-mono font-medium text-emerald-600">
+            <span className="font-mono font-medium text-[#216e39] dark:text-[#39d353]">
               +{formatNumber(linesAdded)}
             </span>
           </div>
           <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full bg-emerald-500 transition-all"
+              className="h-full bg-[#216e39] dark:bg-[#39d353] transition-all"
               style={{ width: `${addedPercent}%` }}
             />
           </div>
 
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
-              Lines Deleted
+              <span className="h-2.5 w-2.5 rounded-full bg-[#9be9a8] dark:bg-[#0e4429]" />
+              {t('linesDeleted')}
             </span>
-            <span className="font-mono font-medium text-rose-600">
+            <span className="font-mono font-medium text-[#40c463] dark:text-[#006d32]">
               -{formatNumber(linesDeleted)}
             </span>
           </div>
           <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full bg-rose-500 transition-all"
+              className="h-full bg-[#9be9a8] dark:bg-[#0e4429] transition-all"
               style={{ width: `${deletedPercent}%` }}
             />
           </div>
@@ -91,32 +96,32 @@ export function CodeProductivityChart({ codeMetrics, className }: CodeProductivi
         {/* Net Change */}
         <div className="rounded-lg bg-muted/50 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Net Change</span>
+            <span className="text-sm text-muted-foreground">{t('netChange')}</span>
             <span
-              className={`font-mono font-bold ${netLines >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}
+              className={`font-mono font-bold ${netLines >= 0 ? 'text-[#216e39] dark:text-[#39d353]' : 'text-[#9be9a8] dark:text-[#0e4429]'}`}
             >
               {netLines >= 0 ? '+' : ''}
-              {formatNumber(netLines)} lines
+              {formatNumber(netLines)} {t('lines')}
             </span>
           </div>
         </div>
 
-        {/* File Stats */}
+        {/* File Stats - GitHub-style: Green */}
         <div className="grid grid-cols-3 gap-3">
           <div className="flex flex-col items-center rounded-lg bg-muted/50 p-2">
-            <FilePlus className="mb-1 h-4 w-4 text-emerald-500" />
+            <FilePlus className="mb-1 h-4 w-4 text-[#216e39] dark:text-[#39d353]" />
             <span className="text-lg font-bold">{filesCreated}</span>
-            <span className="text-xs text-muted-foreground">Created</span>
+            <span className="text-xs text-muted-foreground">{t('created')}</span>
           </div>
           <div className="flex flex-col items-center rounded-lg bg-muted/50 p-2">
-            <FileEdit className="mb-1 h-4 w-4 text-blue-500" />
+            <FileEdit className="mb-1 h-4 w-4 text-[#30a14e] dark:text-[#26a641]" />
             <span className="text-lg font-bold">{filesModified}</span>
-            <span className="text-xs text-muted-foreground">Modified</span>
+            <span className="text-xs text-muted-foreground">{t('modified')}</span>
           </div>
           <div className="flex flex-col items-center rounded-lg bg-muted/50 p-2">
-            <TrendingUp className="mb-1 h-4 w-4 text-amber-500" />
+            <TrendingUp className="mb-1 h-4 w-4 text-[#40c463] dark:text-[#006d32]" />
             <span className="text-lg font-bold">{Math.round(refactorRatio * 100)}%</span>
-            <span className="text-xs text-muted-foreground">Refactor</span>
+            <span className="text-xs text-muted-foreground">{t('refactor')}</span>
           </div>
         </div>
       </CardContent>

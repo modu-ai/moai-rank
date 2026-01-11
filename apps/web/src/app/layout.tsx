@@ -2,22 +2,26 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/next';
 import { ClerkProvider } from '@clerk/nextjs';
-import { Geist, Geist_Mono } from 'next/font/google';
-import { ThemeProvider } from '@/components/providers/theme-provider';
+import { Noto_Sans, Noto_Sans_Mono } from 'next/font/google';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import { ThemeProvider } from '@/components/providers/theme-provider';
 import './globals.css';
 
 const GA_TRACKING_ID = 'G-3JBPGGGMJZ';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const notoSans = Noto_Sans({
+  variable: '--font-noto-sans',
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const notoSansMono = Noto_Sans_Mono({
+  variable: '--font-noto-sans-mono',
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rank.moai.dev';
@@ -96,14 +100,17 @@ export const metadata: Metadata = {
   category: 'technology',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
     <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
+      <html lang={locale}>
         <head>
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`}
@@ -119,20 +126,22 @@ export default function RootLayout({
           </Script>
         </head>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans antialiased`}
+          className={`${notoSans.variable} ${notoSansMono.variable} min-h-screen bg-background font-sans antialiased`}
         >
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
-            enableSystem
+            defaultTheme="light"
+            forcedTheme="light"
             disableTransitionOnChange
           >
-            <div className="relative flex min-h-screen flex-col">
-              <Header />
-              <main className="flex-1">{children}</main>
-              <Footer />
-            </div>
-            <Analytics />
+            <NextIntlClientProvider messages={messages}>
+              <div className="relative flex min-h-screen flex-col">
+                <Header />
+                <main className="flex-1">{children}</main>
+                <Footer />
+              </div>
+              <Analytics />
+            </NextIntlClientProvider>
           </ThemeProvider>
         </body>
       </html>

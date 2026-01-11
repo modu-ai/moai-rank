@@ -1,35 +1,39 @@
-import type { NextRequest } from "next/server";
-import { z } from "zod";
-import { db, sessions, tokenUsage, dailyAggregates } from "@/db";
-import { eq, sql, desc, avg } from "drizzle-orm";
-import {
-  successResponse,
-  Errors,
-  corsOptionsResponse,
-} from "@/lib/api-response";
+import type { NextRequest } from 'next/server';
+import { z } from 'zod';
+import { db, sessions, tokenUsage, dailyAggregates } from '@/db';
+import { eq, sql, desc, avg } from 'drizzle-orm';
+import { successResponse, Errors, corsOptionsResponse } from '@/lib/api-response';
 import {
   validateApiKey,
   extractHmacAuth,
   verifyHmacSignature,
   computeSessionHash,
-} from "@/lib/auth";
+} from '@/lib/auth';
 import {
   logInvalidApiKey,
   logInvalidHmacSignature,
   logSecurityEvent,
   logRateLimitExceeded,
-} from "@/lib/audit";
-import { checkRateLimit } from "@/lib/rate-limiter";
+} from '@/lib/audit';
+import { checkRateLimit } from '@/lib/rate-limiter';
 
 /**
  * Security Constants
+ *
+ * NOTE: These are SESSION-level limits, not per-message limits.
+ * A session can accumulate tokens across many messages/turns.
+ *
+ * Typical Claude session usage:
+ * - Input tokens: Can accumulate to millions in long sessions
+ * - Output tokens: Can accumulate to hundreds of thousands
+ * - Cache tokens: Can accumulate to tens of millions (context caching)
  */
-// Claude context window limit
-const MAX_INPUT_TOKENS = 200000;
-// Claude output limit
-const MAX_OUTPUT_TOKENS = 16000;
-// Claude cache limits
-const MAX_CACHE_TOKENS = 200000;
+// Session-level input token limit (50M tokens per session)
+const MAX_INPUT_TOKENS = 50_000_000;
+// Session-level output token limit (10M tokens per session)
+const MAX_OUTPUT_TOKENS = 10_000_000;
+// Session-level cache token limit (100M tokens per session)
+const MAX_CACHE_TOKENS = 100_000_000;
 // Minimum time between sessions (1 minute)
 const MIN_SESSION_INTERVAL_MS = 60000;
 // Anomaly detection threshold (10x average)
@@ -45,26 +49,49 @@ const SESSION_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
  * Session creation request schema
  */
 const CreateSessionSchema = z.object({
-  sessionHash: z.string().length(64, "Invalid session hash"),
+  sessionHash: z.string().length(64, 'Invalid session hash'),
   anonymousProjectId: z.string().max(16).optional(),
   // V010: Add bounds checking for endedAt timestamp to prevent replay attacks
-  endedAt: z.string().datetime().refine(
-    (val) => {
-      const sessionDate = new Date(val);
-      const now = Date.now();
-      const timeDiff = Math.abs(sessionDate.getTime() - now);
-      return timeDiff <= SESSION_TIMESTAMP_TOLERANCE_MS;
-    },
-    {
-      message: "Session endedAt must be within 5 minutes of current time",
-    }
-  ),
+  endedAt: z
+    .string()
+    .datetime()
+    .refine(
+      (val) => {
+        const sessionDate = new Date(val);
+        const now = Date.now();
+        const timeDiff = Math.abs(sessionDate.getTime() - now);
+        return timeDiff <= SESSION_TIMESTAMP_TOLERANCE_MS;
+      },
+      {
+        message: 'Session endedAt must be within 5 minutes of current time',
+      }
+    ),
   modelName: z.string().max(50).optional(),
   // V001: Add maximum token validation to prevent abuse
-  inputTokens: z.number().int().min(0).max(MAX_INPUT_TOKENS, "Input tokens exceed Claude context limit"),
-  outputTokens: z.number().int().min(0).max(MAX_OUTPUT_TOKENS, "Output tokens exceed Claude output limit"),
-  cacheCreationTokens: z.number().int().min(0).max(MAX_CACHE_TOKENS, "Cache creation tokens exceed limit").optional().default(0),
-  cacheReadTokens: z.number().int().min(0).max(MAX_CACHE_TOKENS, "Cache read tokens exceed limit").optional().default(0),
+  inputTokens: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_INPUT_TOKENS, 'Input tokens exceed Claude context limit'),
+  outputTokens: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_OUTPUT_TOKENS, 'Output tokens exceed Claude output limit'),
+  cacheCreationTokens: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_CACHE_TOKENS, 'Cache creation tokens exceed limit')
+    .optional()
+    .default(0),
+  cacheReadTokens: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_CACHE_TOKENS, 'Cache read tokens exceed limit')
+    .optional()
+    .default(0),
 });
 
 /**
@@ -104,7 +131,7 @@ export async function POST(request: NextRequest) {
 
     // Validate API key presence
     if (!apiKey) {
-      return Errors.unauthorized("API key required");
+      return Errors.unauthorized('API key required');
     }
 
     // Validate user from API key
@@ -112,14 +139,14 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       const prefix = apiKey.substring(0, 16);
-      await logInvalidApiKey(prefix, "/api/v1/sessions", request);
-      return Errors.unauthorized("Invalid API key");
+      await logInvalidApiKey(prefix, '/api/v1/sessions', request);
+      return Errors.unauthorized('Invalid API key');
     }
 
     // V002 + V007: Distributed rate limiting - 100 requests per minute per user
     const rateLimitResult = await checkRateLimit(user.id);
     if (!rateLimitResult.success) {
-      await logRateLimitExceeded(user.id, "/api/v1/sessions", request);
+      await logRateLimitExceeded(user.id, '/api/v1/sessions', request);
       return Errors.rateLimited(
         `Rate limit exceeded. Try again after ${new Date(rateLimitResult.reset).toISOString()}`
       );
@@ -129,11 +156,11 @@ export async function POST(request: NextRequest) {
     if (!timestamp || !signature) {
       await logInvalidHmacSignature(
         user.id,
-        "/api/v1/sessions",
-        "Missing timestamp or signature",
+        '/api/v1/sessions',
+        'Missing timestamp or signature',
         request
       );
-      return Errors.unauthorized("HMAC authentication required");
+      return Errors.unauthorized('HMAC authentication required');
     }
 
     // Get raw body for signature verification
@@ -143,11 +170,11 @@ export async function POST(request: NextRequest) {
     if (!verifyHmacSignature(apiKey, timestamp, bodyText, signature)) {
       await logInvalidHmacSignature(
         user.id,
-        "/api/v1/sessions",
-        "Signature mismatch or expired timestamp",
+        '/api/v1/sessions',
+        'Signature mismatch or expired timestamp',
         request
       );
-      return Errors.unauthorized("Invalid HMAC signature");
+      return Errors.unauthorized('Invalid HMAC signature');
     }
 
     // Parse and validate request body
@@ -155,13 +182,13 @@ export async function POST(request: NextRequest) {
     try {
       body = JSON.parse(bodyText);
     } catch {
-      return Errors.validationError("Invalid JSON body");
+      return Errors.validationError('Invalid JSON body');
     }
 
     const parseResult = CreateSessionSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return Errors.validationError("Invalid session data", {
+      return Errors.validationError('Invalid session data', {
         errors: parseResult.error.flatten().fieldErrors,
       });
     }
@@ -180,14 +207,14 @@ export async function POST(request: NextRequest) {
       lastSession.length > 0 &&
       Date.now() - lastSession[0].endedAt.getTime() < MIN_SESSION_INTERVAL_MS
     ) {
-      await logSecurityEvent("suspicious_activity", user.id, {
-        reason: "Session submitted too soon",
+      await logSecurityEvent('suspicious_activity', user.id, {
+        reason: 'Session submitted too soon',
         lastSessionEndedAt: lastSession[0].endedAt.toISOString(),
         timeSinceLastSession: Date.now() - lastSession[0].endedAt.getTime(),
         minimumInterval: MIN_SESSION_INTERVAL_MS,
       });
       return Errors.validationError(
-        "Session submitted too soon after previous session. Please wait at least 1 minute."
+        'Session submitted too soon after previous session. Please wait at least 1 minute.'
       );
     }
 
@@ -195,21 +222,17 @@ export async function POST(request: NextRequest) {
     const submittedTokens = sessionData.inputTokens + sessionData.outputTokens;
     const userAvgResult = await db
       .select({
-        avgTokens: avg(
-          sql`${tokenUsage.inputTokens} + ${tokenUsage.outputTokens}`
-        ),
+        avgTokens: avg(sql`${tokenUsage.inputTokens} + ${tokenUsage.outputTokens}`),
       })
       .from(tokenUsage)
       .where(eq(tokenUsage.userId, user.id));
 
-    const avgTokens = userAvgResult[0]?.avgTokens
-      ? Number(userAvgResult[0].avgTokens)
-      : 0;
+    const avgTokens = userAvgResult[0]?.avgTokens ? Number(userAvgResult[0].avgTokens) : 0;
 
     // Flag if submitted tokens are >10x the user's historical average
     if (avgTokens > 0 && submittedTokens > avgTokens * ANOMALY_THRESHOLD_MULTIPLIER) {
-      await logSecurityEvent("suspicious_activity", user.id, {
-        reason: "Token count anomaly detected",
+      await logSecurityEvent('suspicious_activity', user.id, {
+        reason: 'Token count anomaly detected',
         submittedTokens,
         averageTokens: avgTokens,
         ratio: submittedTokens / avgTokens,
@@ -237,10 +260,10 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (existingSession.length > 0) {
-      await logSecurityEvent("session_duplicate", user.id, {
+      await logSecurityEvent('session_duplicate', user.id, {
         sessionHash: serverHash.substring(0, 16),
       });
-      return Errors.validationError("Session already recorded");
+      return Errors.validationError('Session already recorded');
     }
 
     // Insert session
@@ -268,7 +291,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Update daily aggregates
-    const sessionDate = new Date(sessionData.endedAt).toISOString().split("T")[0];
+    const sessionDate = new Date(sessionData.endedAt).toISOString().split('T')[0];
 
     await db
       .insert(dailyAggregates)
@@ -278,8 +301,7 @@ export async function POST(request: NextRequest) {
         totalInputTokens: sessionData.inputTokens,
         totalOutputTokens: sessionData.outputTokens,
         totalCacheTokens:
-          (sessionData.cacheCreationTokens ?? 0) +
-          (sessionData.cacheReadTokens ?? 0),
+          (sessionData.cacheCreationTokens ?? 0) + (sessionData.cacheReadTokens ?? 0),
         sessionCount: 1,
       })
       .onConflictDoUpdate({
@@ -288,15 +310,14 @@ export async function POST(request: NextRequest) {
           totalInputTokens: sql`${dailyAggregates.totalInputTokens} + ${sessionData.inputTokens}`,
           totalOutputTokens: sql`${dailyAggregates.totalOutputTokens} + ${sessionData.outputTokens}`,
           totalCacheTokens: sql`${dailyAggregates.totalCacheTokens} + ${
-            (sessionData.cacheCreationTokens ?? 0) +
-            (sessionData.cacheReadTokens ?? 0)
+            (sessionData.cacheCreationTokens ?? 0) + (sessionData.cacheReadTokens ?? 0)
           }`,
           sessionCount: sql`${dailyAggregates.sessionCount} + 1`,
         },
       });
 
     // Log successful session creation
-    await logSecurityEvent("session_created", user.id, {
+    await logSecurityEvent('session_created', user.id, {
       sessionId: newSession.id,
       inputTokens: sessionData.inputTokens,
       outputTokens: sessionData.outputTokens,
@@ -305,12 +326,12 @@ export async function POST(request: NextRequest) {
     const response: CreateSessionResponse = {
       success: true,
       sessionId: newSession.id,
-      message: "Session recorded successfully",
+      message: 'Session recorded successfully',
     };
 
     return successResponse(response, 201);
   } catch (error) {
-    console.error("[API] V1 Sessions error:", error);
+    console.error('[API] V1 Sessions error:', error);
     return Errors.internalError();
   }
 }

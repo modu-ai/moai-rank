@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatNumber } from '@/lib/utils';
 
@@ -17,22 +18,25 @@ interface TokenBreakdownCardProps {
   className?: string;
 }
 
+// GitHub-style: Green contribution palette
 const TOKEN_COLORS = {
-  input: 'bg-blue-500',
-  output: 'bg-amber-500',
-  cacheCreation: 'bg-purple-500',
-  cacheRead: 'bg-green-500',
+  input: 'bg-[#216e39] dark:bg-[#39d353]',
+  output: 'bg-[#40c463] dark:bg-[#006d32]',
+  cacheCreation: 'bg-[#9be9a8] dark:bg-[#0e4429]',
+  cacheRead: 'bg-[#c6e48b] dark:bg-[#0a3d1e]',
 };
 
 export function TokenBreakdownCard({ tokenBreakdown, className }: TokenBreakdownCardProps) {
+  const t = useTranslations('profile.tokenBreakdown');
+
   if (!tokenBreakdown) {
     return (
       <Card className={className}>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Token Breakdown</CardTitle>
+          <CardTitle className="text-base">{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No token data available</p>
+          <p className="text-sm text-muted-foreground">{t('noData')}</p>
         </CardContent>
       </Card>
     );
@@ -62,20 +66,20 @@ export function TokenBreakdownCard({ tokenBreakdown, className }: TokenBreakdown
   return (
     <Card className={className}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Token Breakdown</CardTitle>
+        <CardTitle className="text-base">{t('title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Main stats */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <div className="text-2xl font-bold">{formatNumber(totalTokens)}</div>
-            <div className="text-xs text-muted-foreground">Total Tokens</div>
+            <div className="text-xs text-muted-foreground">{t('totalTokens')}</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div className="text-2xl font-bold text-[#216e39] dark:text-[#39d353]">
               ${estimatedCost.toFixed(2)}
             </div>
-            <div className="text-xs text-muted-foreground">Estimated Cost</div>
+            <div className="text-xs text-muted-foreground">{t('estimatedCost')}</div>
           </div>
         </div>
 
@@ -85,28 +89,28 @@ export function TokenBreakdownCard({ tokenBreakdown, className }: TokenBreakdown
             <div
               className={`${TOKEN_COLORS.input} transition-all`}
               style={{ width: `${inputPercent}%` }}
-              title={`Input: ${inputPercent}%`}
+              title={`${t('input')}: ${inputPercent}%`}
             />
           )}
           {outputPercent > 0 && (
             <div
               className={`${TOKEN_COLORS.output} transition-all`}
               style={{ width: `${outputPercent}%` }}
-              title={`Output: ${outputPercent}%`}
+              title={`${t('output')}: ${outputPercent}%`}
             />
           )}
           {cacheCreationPercent > 0 && (
             <div
               className={`${TOKEN_COLORS.cacheCreation} transition-all`}
               style={{ width: `${cacheCreationPercent}%` }}
-              title={`Cache Creation: ${cacheCreationPercent}%`}
+              title={`${t('cacheCreate')}: ${cacheCreationPercent}%`}
             />
           )}
           {cacheReadPercent > 0 && (
             <div
               className={`${TOKEN_COLORS.cacheRead} transition-all`}
               style={{ width: `${cacheReadPercent}%` }}
-              title={`Cache Read: ${cacheReadPercent}%`}
+              title={`${t('cacheRead')}: ${cacheReadPercent}%`}
             />
           )}
         </div>
@@ -116,28 +120,28 @@ export function TokenBreakdownCard({ tokenBreakdown, className }: TokenBreakdown
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`h-2.5 w-2.5 rounded-full ${TOKEN_COLORS.input}`} />
-              <span className="text-muted-foreground">Input</span>
+              <span className="text-muted-foreground">{t('input')}</span>
             </div>
             <span className="font-mono">{formatNumber(inputTokens)}</span>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`h-2.5 w-2.5 rounded-full ${TOKEN_COLORS.output}`} />
-              <span className="text-muted-foreground">Output</span>
+              <span className="text-muted-foreground">{t('output')}</span>
             </div>
             <span className="font-mono">{formatNumber(outputTokens)}</span>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`h-2.5 w-2.5 rounded-full ${TOKEN_COLORS.cacheCreation}`} />
-              <span className="text-muted-foreground">Cache Create</span>
+              <span className="text-muted-foreground">{t('cacheCreate')}</span>
             </div>
             <span className="font-mono">{formatNumber(cacheCreationTokens)}</span>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`h-2.5 w-2.5 rounded-full ${TOKEN_COLORS.cacheRead}`} />
-              <span className="text-muted-foreground">Cache Read</span>
+              <span className="text-muted-foreground">{t('cacheRead')}</span>
             </div>
             <span className="font-mono">{formatNumber(cacheReadTokens)}</span>
           </div>
@@ -147,15 +151,15 @@ export function TokenBreakdownCard({ tokenBreakdown, className }: TokenBreakdown
         {totalCacheTokens > 0 && (
           <div className="rounded-lg bg-muted/50 p-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Cache Efficiency</span>
+              <span className="text-sm text-muted-foreground">{t('cacheEfficiency')}</span>
               <span className="font-medium">{cacheEfficiency}%</span>
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
               {cacheEfficiency >= 80
-                ? 'Excellent cache utilization'
+                ? t('excellentCache')
                 : cacheEfficiency >= 50
-                  ? 'Good cache utilization'
-                  : 'Consider improving cache usage'}
+                  ? t('goodCache')
+                  : t('improveCacheUsage')}
             </div>
           </div>
         )}

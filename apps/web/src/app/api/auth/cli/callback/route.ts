@@ -4,7 +4,7 @@ import { db, users } from '@/db';
 import { eq } from 'drizzle-orm';
 import { generateApiKey } from '@/lib/auth';
 import { logApiKeyGenerated } from '@/lib/audit';
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 
 // Import cookie name from main CLI auth route
 import { CLI_AUTH_COOKIE } from '../route';

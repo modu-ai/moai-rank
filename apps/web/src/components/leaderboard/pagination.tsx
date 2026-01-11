@@ -1,8 +1,9 @@
-"use client";
+'use client';
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface PaginationProps {
   currentPage: number;
@@ -11,18 +12,14 @@ interface PaginationProps {
   hasPrevious: boolean;
 }
 
-export function Pagination({
-  currentPage,
-  totalPages,
-  hasNext,
-  hasPrevious,
-}: PaginationProps) {
+export function Pagination({ currentPage, totalPages, hasNext, hasPrevious }: PaginationProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('common');
 
   const handlePageChange = (page: number) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("page", page.toString());
+    params.set('page', page.toString());
     router.push(`/?${params.toString()}`);
   };
 
@@ -31,7 +28,7 @@ export function Pagination({
   return (
     <div className="flex items-center justify-between">
       <p className="text-sm text-muted-foreground">
-        Page {currentPage} of {totalPages}
+        {t('page', { current: currentPage, total: totalPages })}
       </p>
       <div className="flex items-center gap-2">
         <Button
@@ -39,19 +36,19 @@ export function Pagination({
           size="sm"
           onClick={() => handlePageChange(currentPage - 1)}
           disabled={!hasPrevious}
-          aria-label="Previous page"
+          aria-label={t('previous')}
         >
           <ChevronLeft className="h-4 w-4" />
-          Previous
+          {t('previous')}
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={!hasNext}
-          aria-label="Next page"
+          aria-label={t('next')}
         >
-          Next
+          {t('next')}
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

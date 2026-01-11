@@ -189,7 +189,7 @@ class ToolRegistry:
             ToolConfig(
                 name="biome-lint",
                 command="biome",
-                args=["lint", "--apply"],
+                args=["lint", "--write"],
                 extensions=js_extensions + ts_extensions,
                 tool_type=ToolType.LINTER,
                 priority=1,
@@ -689,7 +689,9 @@ class ToolRegistry:
         ext = Path(file_path).suffix.lower()
         return self._extension_map.get(ext)
 
-    def get_tools_for_language(self, language: str, tool_type: Optional[ToolType] = None) -> List[ToolConfig]:
+    def get_tools_for_language(
+        self, language: str, tool_type: Optional[ToolType] = None
+    ) -> List[ToolConfig]:
         """Get available tools for a language, optionally filtered by type."""
         tools = self._tools.get(language, [])
 
@@ -700,7 +702,9 @@ class ToolRegistry:
         available_tools = [t for t in tools if self.is_tool_available(t.name)]
         return sorted(available_tools, key=lambda t: t.priority)
 
-    def get_tools_for_file(self, file_path: str, tool_type: Optional[ToolType] = None) -> List[ToolConfig]:
+    def get_tools_for_file(
+        self, file_path: str, tool_type: Optional[ToolType] = None
+    ) -> List[ToolConfig]:
         """Get available tools for a specific file."""
         language = self.get_language_for_file(file_path)
         if not language:

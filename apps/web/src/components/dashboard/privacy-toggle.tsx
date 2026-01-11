@@ -1,47 +1,46 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { EyeOff, Loader2 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { EyeOff, Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface PrivacyToggleProps {
   initialValue: boolean;
 }
 
 export function PrivacyToggle({ initialValue }: PrivacyToggleProps) {
+  const t = useTranslations('settings');
+  const tCommon = useTranslations('common');
   const [privacyMode, setPrivacyMode] = useState(initialValue);
   const [isUpdating, setIsUpdating] = useState(false);
 
   const handleToggle = async (checked: boolean) => {
+    const previousValue = privacyMode;
+    setPrivacyMode(checked); // Optimistic update - immediate UI change
     setIsUpdating(true);
 
     try {
-      const response = await fetch("/api/me/settings", {
-        method: "PATCH",
+      const response = await fetch('/api/me/settings', {
+        method: 'PATCH',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ privacyMode: checked }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update settings");
+        throw new Error('Failed to update settings');
       }
 
       const result = await response.json();
-      if (result.success) {
-        setPrivacyMode(checked);
+      if (!result.success) {
+        throw new Error('API returned failure');
       }
     } catch (error) {
-      console.error("Failed to update privacy mode:", error);
-      // Revert on error
+      console.error('Failed to update privacy mode:', error);
+      setPrivacyMode(previousValue); // Rollback on error
     } finally {
       setIsUpdating(false);
     }
@@ -52,22 +51,18 @@ export function PrivacyToggle({ initialValue }: PrivacyToggleProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <EyeOff className="h-5 w-5" />
-          Privacy Mode
+          {t('privacyMode')}
         </CardTitle>
-        <CardDescription>
-          Hide your username and stats from the public leaderboard
-        </CardDescription>
+        <CardDescription>{t('privacyModeDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <p className="text-sm font-medium">
-              {privacyMode ? "Enabled" : "Disabled"}
+              {privacyMode ? tCommon('enabled') : tCommon('disabled')}
             </p>
             <p className="text-xs text-muted-foreground">
-              {privacyMode
-                ? "Your profile is hidden from the leaderboard"
-                : "Your profile is visible on the leaderboard"}
+              {privacyMode ? t('privacyEnabled') : t('privacyDisabled')}
             </p>
           </div>
           <div className="flex items-center gap-2">

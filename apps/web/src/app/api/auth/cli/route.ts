@@ -4,7 +4,7 @@ import { db, users } from '@/db';
 import { eq } from 'drizzle-orm';
 import { generateApiKey } from '@/lib/auth';
 import { logApiKeyGenerated } from '@/lib/audit';
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 
 // Cookie name for CLI auth state
 const CLI_AUTH_COOKIE = 'moai_cli_auth';
@@ -211,29 +211,27 @@ async function processCliAuth(
 
     return response;
   } catch (error) {
+    // V011: Log detailed error server-side only, return generic message to client
+    // This prevents information disclosure of database structure, credentials, etc.
     console.error('[CLI Auth] Error:', error);
 
-    // Extract detailed error information
-    let errorDetails = 'Unknown error';
     if (error instanceof Error) {
-      errorDetails = error.message;
-      // Check for nested cause (common in Drizzle/Neon errors)
-      if ('cause' in error && error.cause) {
-        errorDetails += ` | Cause: ${error.cause instanceof Error ? error.cause.message : String(error.cause)}`;
-      }
-      // Check for code property (database errors)
-      if ('code' in error) {
-        errorDetails += ` | Code: ${(error as { code: string }).code}`;
-      }
+      // Log detailed info server-side for debugging
+      const errorDetails = {
+        message: error.message,
+        cause: 'cause' in error ? error.cause : undefined,
+        code: 'code' in error ? (error as { code: string }).code : undefined,
+      };
+      console.error('[CLI Auth] Error details:', JSON.stringify(errorDetails));
     }
 
+    // Return generic error to client (no sensitive details exposed)
     return NextResponse.json(
       {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: 'Failed to process CLI authentication',
-          details: errorDetails,
+          message: 'Failed to process CLI authentication. Please try again.',
         },
       },
       { status: 500 }

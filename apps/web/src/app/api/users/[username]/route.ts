@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { db, users, rankings, dailyAggregates, sessions, tokenUsage } from '@/db';
 import { eq, desc, sql, and, gte } from 'drizzle-orm';
 import { successResponse, Errors, corsOptionsResponse } from '@/lib/api-response';
+import { checkPublicRateLimit, extractIpAddress } from '@/lib/rate-limiter';
 
 /**
  * Daily activity data for heatmap
@@ -137,6 +138,15 @@ export async function GET(
   { params }: { params: Promise<{ username: string }> }
 ) {
   try {
+    // V011: IP-based rate limiting for public endpoint (DoS protection)
+    const ipAddress = extractIpAddress(request.headers);
+    const rateLimitResult = await checkPublicRateLimit(ipAddress);
+    if (!rateLimitResult.success) {
+      return Errors.rateLimited(
+        `Rate limit exceeded. Try again after ${new Date(rateLimitResult.reset).toISOString()}`
+      );
+    }
+
     const { username } = await params;
 
     if (!username || username.length < 1) {

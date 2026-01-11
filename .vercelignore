@@ -1,0 +1,19 @@
+# Turbo cache
+.turbo/
+
+# Next.js dev cache
+.next/
+
+# Node modules
+node_modules/
+
+# Local env files
+.env.local
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Search, Pencil, FileCode, Terminal, Clock, MessageSquare } from 'lucide-react';
@@ -21,42 +22,43 @@ interface VibeStyleCardProps {
   className?: string;
 }
 
+// GitHub-style: Green contribution palette
 const styleConfig = {
   Explorer: {
     icon: Search,
-    color: 'bg-blue-500',
-    textColor: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-200',
-    description: 'You love exploring code and understanding systems',
-    emoji: '🔍',
+    color: 'bg-[#40c463] dark:bg-[#006d32]',
+    textColor: 'text-[#216e39] dark:text-[#39d353]',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950',
+    borderColor: 'border-emerald-200 dark:border-emerald-800',
+    descKey: 'explorerDesc' as const,
+    emoji: '',
   },
   Creator: {
     icon: FileCode,
-    color: 'bg-emerald-500',
-    textColor: 'text-emerald-600',
-    bgColor: 'bg-emerald-50',
-    borderColor: 'border-emerald-200',
-    description: 'You focus on creating new code and features',
-    emoji: '✨',
+    color: 'bg-[#216e39] dark:bg-[#39d353]',
+    textColor: 'text-[#216e39] dark:text-[#39d353]',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950',
+    borderColor: 'border-emerald-200 dark:border-emerald-800',
+    descKey: 'creatorDesc' as const,
+    emoji: '',
   },
   Refactorer: {
     icon: Pencil,
-    color: 'bg-amber-500',
-    textColor: 'text-amber-600',
-    bgColor: 'bg-amber-50',
-    borderColor: 'border-amber-200',
-    description: 'You excel at improving and refining existing code',
-    emoji: '🔧',
+    color: 'bg-[#9be9a8] dark:bg-[#0e4429]',
+    textColor: 'text-[#30a14e] dark:text-[#26a641]',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950',
+    borderColor: 'border-emerald-200 dark:border-emerald-800',
+    descKey: 'refactorerDesc' as const,
+    emoji: '',
   },
   Automator: {
     icon: Terminal,
-    color: 'bg-violet-500',
-    textColor: 'text-violet-600',
-    bgColor: 'bg-violet-50',
-    borderColor: 'border-violet-200',
-    description: 'You automate tasks and orchestrate complex workflows',
-    emoji: '⚡',
+    color: 'bg-[#30a14e] dark:bg-[#26a641]',
+    textColor: 'text-[#30a14e] dark:text-[#26a641]',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950',
+    borderColor: 'border-emerald-200 dark:border-emerald-800',
+    descKey: 'automatorDesc' as const,
+    emoji: '',
   },
 };
 
@@ -69,14 +71,16 @@ function formatDuration(seconds: number): string {
 }
 
 export function VibeStyleCard({ vibeStyle, className }: VibeStyleCardProps) {
+  const t = useTranslations('profile.vibeStyle');
+
   if (!vibeStyle) {
     return (
       <Card className={className}>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Vibe Style</CardTitle>
+          <CardTitle className="text-base">{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No vibe data available yet</p>
+          <p className="text-sm text-muted-foreground">{t('noData')}</p>
         </CardContent>
       </Card>
     );
@@ -85,6 +89,21 @@ export function VibeStyleCard({ vibeStyle, className }: VibeStyleCardProps) {
   const { primaryStyle, styleScores, avgSessionDuration, avgTurnsPerSession } = vibeStyle;
   const config = styleConfig[primaryStyle];
   const Icon = config.icon;
+
+  const getStyleName = (style: string) => {
+    switch (style) {
+      case 'Explorer':
+        return t('explorer');
+      case 'Creator':
+        return t('creator');
+      case 'Refactorer':
+        return t('refactorer');
+      case 'Automator':
+        return t('automator');
+      default:
+        return style;
+    }
+  };
 
   // Sort scores for radar-like display
   const scores = [
@@ -98,9 +117,9 @@ export function VibeStyleCard({ vibeStyle, className }: VibeStyleCardProps) {
     <Card className={className}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Vibe Style</CardTitle>
+          <CardTitle className="text-base">{t('title')}</CardTitle>
           <Badge variant="outline" className={`${config.textColor} ${config.borderColor}`}>
-            {config.emoji} {primaryStyle}
+            {getStyleName(primaryStyle)}
           </Badge>
         </div>
       </CardHeader>
@@ -112,8 +131,8 @@ export function VibeStyleCard({ vibeStyle, className }: VibeStyleCardProps) {
               <Icon className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h3 className={`font-semibold ${config.textColor}`}>{primaryStyle}</h3>
-              <p className="text-sm text-muted-foreground">{config.description}</p>
+              <h3 className={`font-semibold ${config.textColor}`}>{getStyleName(primaryStyle)}</h3>
+              <p className="text-sm text-muted-foreground">{t(config.descKey)}</p>
             </div>
           </div>
         </div>
@@ -125,7 +144,7 @@ export function VibeStyleCard({ vibeStyle, className }: VibeStyleCardProps) {
             return (
               <div key={name} className="flex items-center gap-2">
                 <StyleIcon className={`h-4 w-4 ${itemConfig.textColor}`} />
-                <span className="w-20 text-sm">{name}</span>
+                <span className="w-20 text-sm">{getStyleName(name)}</span>
                 <div className="flex-1">
                   <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -134,7 +153,7 @@ export function VibeStyleCard({ vibeStyle, className }: VibeStyleCardProps) {
                     />
                   </div>
                 </div>
-                <span className="w-10 text-right text-sm font-mono">{score}%</span>
+                <span className="w-10 text-right font-mono text-sm">{score}%</span>
               </div>
             );
           })}
@@ -146,14 +165,14 @@ export function VibeStyleCard({ vibeStyle, className }: VibeStyleCardProps) {
             <Clock className="h-4 w-4 text-muted-foreground" />
             <div>
               <div className="text-sm font-medium">{formatDuration(avgSessionDuration)}</div>
-              <div className="text-xs text-muted-foreground">Avg Session</div>
+              <div className="text-xs text-muted-foreground">{t('avgSession')}</div>
             </div>
           </div>
           <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
             <div>
-              <div className="text-sm font-medium">{avgTurnsPerSession} turns</div>
-              <div className="text-xs text-muted-foreground">Avg per Session</div>
+              <div className="text-sm font-medium">{t('turns', { count: avgTurnsPerSession })}</div>
+              <div className="text-xs text-muted-foreground">{t('avgPerSession')}</div>
             </div>
           </div>
         </div>

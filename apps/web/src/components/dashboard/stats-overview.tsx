@@ -78,7 +78,7 @@ export function StatsOverview({
   streaks,
 }: StatsOverviewProps) {
   const currentRank = rankings.allTime;
-  const weeklyRank = rankings.weekly;
+  const _weeklyRank = rankings.weekly;
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

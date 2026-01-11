@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatNumber } from '@/lib/utils';
 
@@ -17,14 +18,16 @@ interface DayOfWeekChartProps {
 }
 
 export function DayOfWeekChart({ dayOfWeekActivity, className }: DayOfWeekChartProps) {
+  const t = useTranslations('profile.weeklyPattern');
+
   if (!dayOfWeekActivity || dayOfWeekActivity.length === 0) {
     return (
       <Card className={className}>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Weekly Pattern</CardTitle>
+          <CardTitle className="text-base">{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No activity data available</p>
+          <p className="text-sm text-muted-foreground">{t('noData')}</p>
         </CardContent>
       </Card>
     );
@@ -53,14 +56,14 @@ export function DayOfWeekChart({ dayOfWeekActivity, className }: DayOfWeekChartP
 
   const weekdayPercent = totalTokens > 0 ? Math.round((weekdayTokens / totalTokens) * 100) : 0;
 
-  // Get bar color based on intensity
+  // Get bar color based on intensity (GitHub-style: green)
   const getBarColor = (tokens: number) => {
     const intensity = tokens / maxTokens;
-    if (intensity > 0.8) return 'bg-violet-500';
-    if (intensity > 0.6) return 'bg-violet-400';
-    if (intensity > 0.4) return 'bg-violet-300';
-    if (intensity > 0.2) return 'bg-violet-200';
-    if (intensity > 0) return 'bg-violet-100';
+    if (intensity > 0.8) return 'bg-[#216e39] dark:bg-[#39d353]';
+    if (intensity > 0.6) return 'bg-[#30a14e] dark:bg-[#26a641]';
+    if (intensity > 0.4) return 'bg-[#40c463] dark:bg-[#006d32]';
+    if (intensity > 0.2) return 'bg-[#9be9a8] dark:bg-[#0e4429]';
+    if (intensity > 0) return 'bg-[#c6e48b] dark:bg-[#0a3d1e]';
     return 'bg-muted';
   };
 
@@ -68,10 +71,10 @@ export function DayOfWeekChart({ dayOfWeekActivity, className }: DayOfWeekChartP
     <Card className={className}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Weekly Pattern</CardTitle>
+          <CardTitle className="text-base">{t('title')}</CardTitle>
           <div className="text-right">
             <div className="text-sm font-medium">{mostActiveDay.dayName}</div>
-            <div className="text-xs text-muted-foreground">Most active day</div>
+            <div className="text-xs text-muted-foreground">{t('mostActiveDay')}</div>
           </div>
         </div>
       </CardHeader>
@@ -93,7 +96,7 @@ export function DayOfWeekChart({ dayOfWeekActivity, className }: DayOfWeekChartP
                     />
                   </div>
                 </div>
-                <div className="w-16 text-right text-xs font-mono">{formatNumber(d.tokens)}</div>
+                <div className="w-16 text-right font-mono text-xs">{formatNumber(d.tokens)}</div>
               </div>
             );
           })}
@@ -102,21 +105,24 @@ export function DayOfWeekChart({ dayOfWeekActivity, className }: DayOfWeekChartP
         {/* Weekday vs Weekend comparison */}
         <div className="rounded-lg bg-muted/50 p-3">
           <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Weekdays vs Weekends</span>
+            <span className="text-muted-foreground">{t('weekdaysVsWeekends')}</span>
             <span className="font-medium">
               {weekdayPercent}% / {100 - weekdayPercent}%
             </span>
           </div>
           <div className="flex h-2 overflow-hidden rounded-full bg-muted">
-            <div className="bg-violet-500 transition-all" style={{ width: `${weekdayPercent}%` }} />
             <div
-              className="bg-violet-200 transition-all"
+              className="bg-[#30a14e] dark:bg-[#26a641] transition-all"
+              style={{ width: `${weekdayPercent}%` }}
+            />
+            <div
+              className="bg-[#9be9a8] dark:bg-[#0e4429] transition-all"
               style={{ width: `${100 - weekdayPercent}%` }}
             />
           </div>
           <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-            <span>Mon-Fri: {formatNumber(weekdayTokens)}</span>
-            <span>Sat-Sun: {formatNumber(weekendTokens)}</span>
+            <span>{t('monFri', { count: formatNumber(weekdayTokens) })}</span>
+            <span>{t('satSun', { count: formatNumber(weekendTokens) })}</span>
           </div>
         </div>
       </CardContent>

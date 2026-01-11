@@ -1,6 +1,7 @@
 'use client';
 
 import { Flame, Trophy } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface StreakInfo {
@@ -15,14 +16,16 @@ interface StreakCardProps {
 }
 
 export function StreakCard({ streak, className }: StreakCardProps) {
-  if (!streak) {
-    return null;
-  }
+  const t = useTranslations('profile.streak');
+  const tCommon = useTranslations('common');
 
-  const { currentStreak, longestStreak, lastActiveDate } = streak;
+  // Use default values when streak is null
+  const currentStreak = streak?.currentStreak ?? 0;
+  const longestStreak = streak?.longestStreak ?? 0;
+  const lastActiveDate = streak?.lastActiveDate ?? null;
 
   const formatLastActive = (dateStr: string | null) => {
-    if (!dateStr) return 'Never';
+    if (!dateStr) return tCommon('never');
 
     const date = new Date(dateStr);
     const today = new Date();
@@ -33,9 +36,9 @@ export function StreakCard({ streak, className }: StreakCardProps) {
 
     const diffDays = Math.floor((today.getTime() - dateOnly.getTime()) / 86400000);
 
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays === 0) return tCommon('today');
+    if (diffDays === 1) return tCommon('yesterday');
+    if (diffDays < 7) return tCommon('daysAgo', { count: diffDays });
 
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
@@ -47,16 +50,16 @@ export function StreakCard({ streak, className }: StreakCardProps) {
           {/* Current Streak */}
           <div className="flex items-center gap-2">
             <div
-              className={`rounded-full p-2 ${currentStreak > 0 ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-muted'}`}
+              className={`rounded-full p-2 ${currentStreak > 0 ? 'bg-neutral-200' : 'bg-muted'}`}
             >
               <Flame
-                className={`h-5 w-5 ${currentStreak > 0 ? 'text-orange-500' : 'text-muted-foreground'}`}
+                className={`h-5 w-5 ${currentStreak > 0 ? 'text-neutral-900' : 'text-muted-foreground'}`}
               />
             </div>
             <div>
               <div className="text-xl font-bold">{currentStreak}</div>
               <div className="text-xs text-muted-foreground">
-                {currentStreak === 1 ? 'day streak' : 'days streak'}
+                {t('dayStreak', { count: currentStreak })}
               </div>
             </div>
           </div>
@@ -66,19 +69,19 @@ export function StreakCard({ streak, className }: StreakCardProps) {
 
           {/* Longest Streak */}
           <div className="flex items-center gap-2">
-            <div className="rounded-full bg-amber-100 p-2 dark:bg-amber-900/30">
-              <Trophy className="h-5 w-5 text-amber-500" />
+            <div className="rounded-full bg-neutral-100 p-2">
+              <Trophy className="h-5 w-5 text-neutral-700" />
             </div>
             <div>
               <div className="text-xl font-bold">{longestStreak}</div>
-              <div className="text-xs text-muted-foreground">longest streak</div>
+              <div className="text-xs text-muted-foreground">{t('longestStreak')}</div>
             </div>
           </div>
         </div>
 
         {/* Last Active */}
         <div className="text-right">
-          <div className="text-sm font-medium">Last Active</div>
+          <div className="text-sm font-medium">{t('lastActive')}</div>
           <div className="text-xs text-muted-foreground">{formatLastActive(lastActiveDate)}</div>
         </div>
       </CardContent>

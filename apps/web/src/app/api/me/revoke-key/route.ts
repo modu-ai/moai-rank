@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { db, users } from '@/db';
 import { eq } from 'drizzle-orm';
 import { successResponse, Errors } from '@/lib/api-response';

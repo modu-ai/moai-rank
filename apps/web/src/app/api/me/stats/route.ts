@@ -166,10 +166,10 @@ export async function GET() {
         efficiencyScore,
       },
       rankings: {
-        daily: rankingMap["daily"] ?? null,
-        weekly: rankingMap["weekly"] ?? null,
-        monthly: rankingMap["monthly"] ?? null,
-        allTime: rankingMap["all_time"] ?? null,
+        daily: rankingMap.daily ?? null,
+        weekly: rankingMap.weekly ?? null,
+        monthly: rankingMap.monthly ?? null,
+        allTime: rankingMap.all_time ?? null,
       },
       trends: {
         last7Days,

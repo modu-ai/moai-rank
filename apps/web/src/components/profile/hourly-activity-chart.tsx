@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatNumber } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -16,14 +17,17 @@ interface HourlyActivityChartProps {
 }
 
 export function HourlyActivityChart({ hourlyActivity, className }: HourlyActivityChartProps) {
+  const t = useTranslations('profile.hourlyActivity');
+  const tCommon = useTranslations('common');
+
   if (!hourlyActivity || hourlyActivity.length === 0) {
     return (
       <Card className={className}>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Hourly Activity</CardTitle>
+          <CardTitle className="text-base">{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No activity data available</p>
+          <p className="text-sm text-muted-foreground">{t('noData')}</p>
         </CardContent>
       </Card>
     );
@@ -50,22 +54,22 @@ export function HourlyActivityChart({ hourlyActivity, className }: HourlyActivit
 
   // Get time period label
   const getTimePeriod = (hour: number) => {
-    if (hour >= 5 && hour < 9) return 'Early Morning';
-    if (hour >= 9 && hour < 12) return 'Morning';
-    if (hour >= 12 && hour < 14) return 'Lunch';
-    if (hour >= 14 && hour < 18) return 'Afternoon';
-    if (hour >= 18 && hour < 22) return 'Evening';
-    return 'Night';
+    if (hour >= 5 && hour < 9) return t('earlyMorning');
+    if (hour >= 9 && hour < 12) return t('morning');
+    if (hour >= 12 && hour < 14) return t('lunch');
+    if (hour >= 14 && hour < 18) return t('afternoon');
+    if (hour >= 18 && hour < 22) return t('evening');
+    return t('night');
   };
 
-  // Get color based on intensity
+  // GitHub-style: Green contribution colors
   const getBarColor = (tokens: number) => {
     const intensity = tokens / maxTokens;
-    if (intensity > 0.8) return 'bg-emerald-500';
-    if (intensity > 0.6) return 'bg-emerald-400';
-    if (intensity > 0.4) return 'bg-emerald-300';
-    if (intensity > 0.2) return 'bg-emerald-200';
-    if (intensity > 0) return 'bg-emerald-100';
+    if (intensity > 0.8) return 'bg-[#216e39] dark:bg-[#39d353]';
+    if (intensity > 0.6) return 'bg-[#30a14e] dark:bg-[#26a641]';
+    if (intensity > 0.4) return 'bg-[#40c463] dark:bg-[#006d32]';
+    if (intensity > 0.2) return 'bg-[#9be9a8] dark:bg-[#0e4429]';
+    if (intensity > 0) return 'bg-[#c6e48b] dark:bg-[#0a3d1e]';
     return 'bg-muted';
   };
 
@@ -73,9 +77,11 @@ export function HourlyActivityChart({ hourlyActivity, className }: HourlyActivit
     <Card className={className}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Coding Hours</CardTitle>
+          <CardTitle className="text-base">{t('title')}</CardTitle>
           <div className="text-right">
-            <div className="text-sm font-medium">Peak: {formatHour(peakHour.hour)}</div>
+            <div className="text-sm font-medium">
+              {t('peak', { hour: formatHour(peakHour.hour) })}
+            </div>
             <div className="text-xs text-muted-foreground">{getTimePeriod(peakHour.hour)}</div>
           </div>
         </div>
@@ -99,8 +105,12 @@ export function HourlyActivityChart({ hourlyActivity, className }: HourlyActivit
                   <TooltipContent>
                     <div className="text-center">
                       <div className="font-medium">{formatHour(h.hour)}</div>
-                      <div className="text-xs">{formatNumber(h.tokens)} tokens</div>
-                      <div className="text-xs text-muted-foreground">{h.sessions} sessions</div>
+                      <div className="text-xs">
+                        {formatNumber(h.tokens)} {tCommon('tokens')}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {h.sessions} {t('sessions')}
+                      </div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -122,15 +132,15 @@ export function HourlyActivityChart({ hourlyActivity, className }: HourlyActivit
         <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/50 p-3 text-center">
           <div>
             <div className="text-sm font-medium">{formatNumber(totalTokens)}</div>
-            <div className="text-xs text-muted-foreground">Total Tokens</div>
+            <div className="text-xs text-muted-foreground">{t('totalTokens')}</div>
           </div>
           <div>
             <div className="text-sm font-medium">{totalSessions}</div>
-            <div className="text-xs text-muted-foreground">Sessions</div>
+            <div className="text-xs text-muted-foreground">{t('sessions')}</div>
           </div>
           <div>
             <div className="text-sm font-medium">{formatHour(peakHour.hour)}</div>
-            <div className="text-xs text-muted-foreground">Peak Hour</div>
+            <div className="text-xs text-muted-foreground">{t('peakHour')}</div>
           </div>
         </div>
       </CardContent>

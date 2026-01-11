@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "bun run build --filter=@moai-rank/web",
+  "outputDirectory": "apps/web/.next",
+  "installCommand": "bun install",
+  "regions": ["icn1"],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/calculate-rankings",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

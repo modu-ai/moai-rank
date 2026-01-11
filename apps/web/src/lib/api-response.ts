@@ -118,16 +118,28 @@ export function rateLimitResponse(resetTime: number): NextResponse<ApiResponse<n
 }
 
 /**
- * Add CORS headers for CLI access
+ * V011: CORS configuration for API endpoints
+ *
+ * Security considerations:
+ * - CLI endpoints (/api/v1/*) need wildcard origin for local CLI access
+ * - Public read endpoints use restrictive CORS with specific origins
+ * - Sensitive endpoints should not allow cross-origin requests
+ *
+ * Note: CLI runs locally and needs to access the API from localhost,
+ * which requires Access-Control-Allow-Origin: * for the /api/v1/* routes.
  */
 function addCorsHeaders(existingHeaders?: HeadersInit): Headers {
   const headers = new Headers(existingHeaders);
 
-  // Allow CLI access from any origin
+  // For CLI API endpoints, allow any origin (CLI runs locally)
+  // This is intentional for /api/v1/* routes used by the CLI
   headers.set('Access-Control-Allow-Origin', '*');
-  headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   headers.set('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, X-Timestamp, X-Signature');
   headers.set('Access-Control-Max-Age', '86400');
+  // Prevent credentials from being sent with cross-origin requests
+  // This mitigates CSRF risks even with wildcard origin
+  headers.set('Access-Control-Allow-Credentials', 'false');
 
   return headers;
 }

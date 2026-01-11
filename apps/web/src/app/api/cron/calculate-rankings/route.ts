@@ -1,8 +1,26 @@
 import type { NextRequest } from 'next/server';
-import { db, users, dailyAggregates, rankings, tokenUsage } from '@/db';
+import { db, getPooledDb, users, dailyAggregates, rankings, tokenUsage } from '@/db';
 import { eq, sql, gte, and } from 'drizzle-orm';
 import { successResponse, Errors } from '@/lib/api-response';
 import { calculateCompositeScore, calculateEfficiencyScore } from '@/lib/score';
+
+/**
+ * V009: Cron Job Configuration
+ *
+ * Optimizations applied:
+ * - Uses Connection Pooler for batch operations
+ * - Batch upserts instead of N+1 pattern (BATCH_SIZE = 100)
+ * - Execution time monitoring for observability
+ */
+
+// Maximum execution time for the cron job (requires Pro plan for > 10s)
+export const maxDuration = 60;
+
+// Batch size for upsert operations
+const BATCH_SIZE = 100;
+
+// Ensure the route is not cached
+export const dynamic = 'force-dynamic';
 
 /**
  * Period types for ranking calculation
@@ -126,41 +144,52 @@ async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCa
   // Sort by composite score descending
   scoredUsers.sort((a, b) => b.compositeScore - a.compositeScore);
 
-  // Upsert rankings
-  let rankingsUpdated = 0;
+  // V009: Batch upsert rankings instead of N+1 pattern
   const periodStartStr = periodStart.toISOString().split('T')[0];
+  const pooledDb = getPooledDb();
 
-  for (let i = 0; i < scoredUsers.length; i++) {
-    const user = scoredUsers[i];
-    const rankPosition = i + 1;
+  // Process in batches for better performance
+  let rankingsUpdated = 0;
 
-    await db
+  for (let batchStart = 0; batchStart < scoredUsers.length; batchStart += BATCH_SIZE) {
+    const batch = scoredUsers.slice(batchStart, batchStart + BATCH_SIZE);
+
+    // Prepare batch values with rank positions
+    const batchValues = batch.map((user, index) => ({
+      userId: user.userId,
+      periodType: period,
+      periodStart: periodStartStr,
+      rankPosition: batchStart + index + 1,
+      totalTokens: user.totalTokens,
+      compositeScore: user.compositeScore.toString(),
+      sessionCount: user.sessionCount,
+      efficiencyScore: user.efficiencyScore.toString(),
+      updatedAt: now,
+    }));
+
+    // Batch upsert using raw SQL for optimal performance
+    // PostgreSQL's INSERT ... ON CONFLICT with multiple rows
+    await pooledDb
       .insert(rankings)
-      .values({
-        userId: user.userId,
-        periodType: period,
-        periodStart: periodStartStr,
-        rankPosition,
-        totalTokens: user.totalTokens,
-        compositeScore: user.compositeScore.toString(),
-        sessionCount: user.sessionCount,
-        efficiencyScore: user.efficiencyScore.toString(),
-        updatedAt: now,
-      })
+      .values(batchValues)
       .onConflictDoUpdate({
         target: [rankings.userId, rankings.periodType, rankings.periodStart],
         set: {
-          rankPosition,
-          totalTokens: user.totalTokens,
-          compositeScore: user.compositeScore.toString(),
-          sessionCount: user.sessionCount,
-          efficiencyScore: user.efficiencyScore.toString(),
-          updatedAt: now,
+          rankPosition: sql`EXCLUDED.rank_position`,
+          totalTokens: sql`EXCLUDED.total_tokens`,
+          compositeScore: sql`EXCLUDED.composite_score`,
+          sessionCount: sql`EXCLUDED.session_count`,
+          efficiencyScore: sql`EXCLUDED.efficiency_score`,
+          updatedAt: sql`EXCLUDED.updated_at`,
         },
       });
 
-    rankingsUpdated++;
+    rankingsUpdated += batch.length;
   }
+
+  console.log(
+    `[CRON] ${period}: Processed ${scoredUsers.length} users in ${Math.ceil(scoredUsers.length / BATCH_SIZE)} batches`
+  );
 
   return {
     period,
@@ -180,12 +209,13 @@ function getPeriodStart(period: PeriodType, now: Date): Date {
     case 'daily':
       // Start of today
       return start;
-    case 'weekly':
+    case 'weekly': {
       // Start of this week (Monday)
       const day = start.getDay();
       const diff = start.getDate() - day + (day === 0 ? -6 : 1);
       start.setDate(diff);
       return start;
+    }
     case 'monthly':
       // Start of this month
       start.setDate(1);
@@ -229,9 +259,11 @@ async function calculateStreaks(): Promise<Map<string, number>> {
 
 /**
  * Update daily aggregates for all users
+ * V009: Uses batch processing for better performance
  */
 async function updateDailyAggregates(): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
+  const pooledDb = getPooledDb();
 
   // Calculate today's aggregates per user
   const todayStats = await db
@@ -246,24 +278,28 @@ async function updateDailyAggregates(): Promise<void> {
     .where(sql`DATE(${tokenUsage.recordedAt}) = ${today}`)
     .groupBy(tokenUsage.userId);
 
-  for (const stats of todayStats) {
-    if (!stats.userId) continue;
+  if (todayStats.length === 0) {
+    console.log('[CRON] No daily aggregates to update');
+    return;
+  }
 
-    const efficiency = calculateEfficiencyScore(
-      Number(stats.totalInputTokens),
-      Number(stats.totalOutputTokens)
-    );
-    const compositeScore = calculateCompositeScore({
-      totalInputTokens: Number(stats.totalInputTokens),
-      totalOutputTokens: Number(stats.totalOutputTokens),
-      totalSessions: Number(stats.sessionCount),
-      currentStreak: 1,
-    });
+  // V009: Prepare all values with calculated scores
+  const aggregateValues = todayStats
+    .filter((stats) => stats.userId !== null)
+    .map((stats) => {
+      const efficiency = calculateEfficiencyScore(
+        Number(stats.totalInputTokens),
+        Number(stats.totalOutputTokens)
+      );
+      const compositeScore = calculateCompositeScore({
+        totalInputTokens: Number(stats.totalInputTokens),
+        totalOutputTokens: Number(stats.totalOutputTokens),
+        totalSessions: Number(stats.sessionCount),
+        currentStreak: 1,
+      });
 
-    await db
-      .insert(dailyAggregates)
-      .values({
-        userId: stats.userId,
+      return {
+        userId: stats.userId!,
         date: today,
         totalInputTokens: Number(stats.totalInputTokens),
         totalOutputTokens: Number(stats.totalOutputTokens),
@@ -271,19 +307,32 @@ async function updateDailyAggregates(): Promise<void> {
         sessionCount: Number(stats.sessionCount),
         avgEfficiency: efficiency.toString(),
         compositeScore: compositeScore.toString(),
-      })
+      };
+    });
+
+  // V009: Batch upsert daily aggregates
+  for (let batchStart = 0; batchStart < aggregateValues.length; batchStart += BATCH_SIZE) {
+    const batch = aggregateValues.slice(batchStart, batchStart + BATCH_SIZE);
+
+    await pooledDb
+      .insert(dailyAggregates)
+      .values(batch)
       .onConflictDoUpdate({
         target: [dailyAggregates.userId, dailyAggregates.date],
         set: {
-          totalInputTokens: Number(stats.totalInputTokens),
-          totalOutputTokens: Number(stats.totalOutputTokens),
-          totalCacheTokens: Number(stats.totalCacheTokens),
-          sessionCount: Number(stats.sessionCount),
-          avgEfficiency: efficiency.toString(),
-          compositeScore: compositeScore.toString(),
+          totalInputTokens: sql`EXCLUDED.total_input_tokens`,
+          totalOutputTokens: sql`EXCLUDED.total_output_tokens`,
+          totalCacheTokens: sql`EXCLUDED.total_cache_tokens`,
+          sessionCount: sql`EXCLUDED.session_count`,
+          avgEfficiency: sql`EXCLUDED.avg_efficiency`,
+          compositeScore: sql`EXCLUDED.composite_score`,
         },
       });
   }
+
+  console.log(
+    `[CRON] Daily aggregates: Updated ${aggregateValues.length} users in ${Math.ceil(aggregateValues.length / BATCH_SIZE)} batches`
+  );
 }
 
 /**

@@ -15,6 +15,7 @@ export type SecurityEventType =
   | 'unauthorized_access'
   | 'session_created'
   | 'session_duplicate'
+  | 'batch_sessions_created'
   | 'user_settings_updated'
   | 'privacy_mode_changed'
   | 'suspicious_activity';

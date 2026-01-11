@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ModelUsage {
@@ -14,14 +15,15 @@ interface ModelUsageChartProps {
   className?: string;
 }
 
+// GitHub-style: Green contribution palette
 const MODEL_COLORS: Record<string, string> = {
-  'claude-sonnet-4-20250514': 'bg-blue-500',
-  'claude-opus-4-20250514': 'bg-purple-500',
-  'claude-3-5-sonnet-20241022': 'bg-sky-500',
-  'claude-3-5-haiku-20241022': 'bg-green-500',
-  'claude-3-opus-20240229': 'bg-violet-500',
-  'claude-3-sonnet-20240229': 'bg-indigo-500',
-  'claude-3-haiku-20240307': 'bg-teal-500',
+  'claude-sonnet-4-20250514': 'bg-[#216e39] dark:bg-[#39d353]',
+  'claude-opus-4-20250514': 'bg-[#30a14e] dark:bg-[#26a641]',
+  'claude-3-5-sonnet-20241022': 'bg-[#40c463] dark:bg-[#006d32]',
+  'claude-3-5-haiku-20241022': 'bg-[#9be9a8] dark:bg-[#0e4429]',
+  'claude-3-opus-20240229': 'bg-[#c6e48b] dark:bg-[#0a3d1e]',
+  'claude-3-sonnet-20240229': 'bg-emerald-300 dark:bg-emerald-800',
+  'claude-3-haiku-20240307': 'bg-emerald-200 dark:bg-emerald-900',
 };
 
 const MODEL_DISPLAY_NAMES: Record<string, string> = {
@@ -43,6 +45,8 @@ function getModelDisplayName(modelName: string): string {
 }
 
 export function ModelUsageChart({ modelUsage, className }: ModelUsageChartProps) {
+  const t = useTranslations('profile.modelUsage');
+
   const sortedUsage = useMemo(() => {
     return [...modelUsage].sort((a, b) => b.percentage - a.percentage);
   }, [modelUsage]);
@@ -55,10 +59,10 @@ export function ModelUsageChart({ modelUsage, className }: ModelUsageChartProps)
     return (
       <Card className={className}>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Model Usage</CardTitle>
+          <CardTitle className="text-base">{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No model usage data available</p>
+          <p className="text-sm text-muted-foreground">{t('noData')}</p>
         </CardContent>
       </Card>
     );
@@ -67,7 +71,7 @@ export function ModelUsageChart({ modelUsage, className }: ModelUsageChartProps)
   return (
     <Card className={className}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Model Usage</CardTitle>
+        <CardTitle className="text-base">{t('title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Progress bar showing all models */}
@@ -101,7 +105,7 @@ export function ModelUsageChart({ modelUsage, className }: ModelUsageChartProps)
         {/* Total */}
         <div className="border-t pt-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Total Sessions</span>
+            <span className="text-muted-foreground">{t('totalSessions')}</span>
             <span className="font-medium">{totalSessions}</span>
           </div>
         </div>

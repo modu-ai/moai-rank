@@ -1,4 +1,4 @@
-import { createHmac, createHash, randomBytes, timingSafeEqual as cryptoTimingSafeEqual } from "crypto";
+import { createHmac, createHash, randomBytes, timingSafeEqual as cryptoTimingSafeEqual } from "node:crypto";
 import { db, users, type User } from "@/db";
 import { eq } from "drizzle-orm";
 
@@ -8,14 +8,14 @@ import { eq } from "drizzle-orm";
  * secret: 32 characters (only hash stored in DB)
  */
 const API_KEY_PREFIX = "moai_rank_";
-const PREFIX_LENGTH = 8;
-const SECRET_LENGTH = 32;
+const _PREFIX_LENGTH = 8;
+const _SECRET_LENGTH = 32;
 
 /**
  * Generate a new API key for a user
  * Returns the full key (shown once) and the hash/prefix for storage
  */
-export function generateApiKey(userId: string): {
+export function generateApiKey(_userId: string): {
   key: string;
   hash: string;
   prefix: string;
@@ -81,7 +81,7 @@ export function verifyHmacSignature(
 ): boolean {
   // Validate timestamp is not too old
   const requestTime = Number.parseInt(timestamp, 10);
-  if (isNaN(requestTime)) {
+  if (Number.isNaN(requestTime)) {
     return false;
   }
 
