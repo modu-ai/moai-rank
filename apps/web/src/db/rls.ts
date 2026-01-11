@@ -17,13 +17,12 @@
  * - WebSocket driver: Maintains persistent connections (for real-time apps)
  */
 
-import { neon, neonConfig } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 import { drizzle, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { sql as drizzleSql } from 'drizzle-orm';
 import * as schema from './schema';
 
-// Enable connection caching for better performance
-neonConfig.fetchConnectionCache = true;
+// Note: fetchConnectionCache is now always enabled by default in @neondatabase/serverless
 
 /**
  * V011: Get database URL with proper validation

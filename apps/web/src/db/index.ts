@@ -1,4 +1,4 @@
-import { neon, neonConfig } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from './schema';
 
@@ -11,13 +11,9 @@ import * as schema from './schema';
  *
  * Connection Pooler URL format: postgres://user:pass@endpoint-pooler.region.neon.tech/dbname
  * Direct URL format: postgres://user:pass@endpoint.region.neon.tech/dbname
+ *
+ * Note: fetchConnectionCache is now always enabled by default in @neondatabase/serverless
  */
-
-/**
- * Enable connection caching for better performance in serverless environments.
- * This reuses TCP connections across requests when possible.
- */
-neonConfig.fetchConnectionCache = true;
 
 /**
  * Get the appropriate database URL based on the use case.
