@@ -9,6 +9,7 @@ import {
   corsOptionsResponse,
 } from '@/lib/api-response';
 import { checkPublicRateLimit, extractIpAddress } from '@/lib/rate-limiter';
+import { getPeriodStart } from '@/lib/date-utils';
 
 /**
  * Query parameters schema for leaderboard
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
     // Transform data respecting privacy settings
     const entries: LeaderboardEntry[] = rankingsData.map((r) => ({
       rank: r.rank,
-      userId: r.privacyMode ? 'private' : r.userId!,
+      userId: r.privacyMode ? 'private' : (r.userId ?? 'unknown'),
       username: r.privacyMode ? `User #${r.rank}` : r.username,
       avatarUrl: r.privacyMode ? null : r.avatarUrl,
       totalTokens: Number(r.totalTokens),
@@ -132,32 +133,4 @@ export async function GET(request: NextRequest) {
  */
 export async function OPTIONS() {
   return corsOptionsResponse();
-}
-
-/**
- * Get the start date for a given period
- */
-function getPeriodStart(period: string): string {
-  const now = new Date();
-
-  switch (period) {
-    case 'daily':
-      return now.toISOString().split('T')[0];
-
-    case 'weekly': {
-      const dayOfWeek = now.getDay();
-      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-      const monday = new Date(now.setDate(diff));
-      return monday.toISOString().split('T')[0];
-    }
-
-    case 'monthly':
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-
-    case 'all_time':
-      return '2024-01-01'; // Fixed start date for all-time rankings
-
-    default:
-      return now.toISOString().split('T')[0];
-  }
 }

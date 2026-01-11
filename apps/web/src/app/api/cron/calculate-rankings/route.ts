@@ -3,6 +3,7 @@ import { db, getPooledDb, users, dailyAggregates, rankings, tokenUsage } from '@
 import { eq, sql, gte, and } from 'drizzle-orm';
 import { successResponse, Errors } from '@/lib/api-response';
 import { calculateCompositeScore, calculateEfficiencyScore } from '@/lib/score';
+import { getPeriodStart } from '@/lib/date-utils';
 
 /**
  * V009: Cron Job Configuration
@@ -40,24 +41,25 @@ interface RankingCalculationResult {
  * This endpoint is designed to be called by Vercel Cron.
  *
  * Security: Verifies CRON_SECRET header to prevent unauthorized access.
- * V012: CRON_SECRET is REQUIRED - endpoint returns 500 if not configured.
+ * V012: CRON_SECRET is REQUIRED in production - bypassed in development.
  */
 export async function GET(request: NextRequest) {
   try {
     // Verify cron secret for security
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
+    const authorization = authHeader?.replace('Bearer ', '');
 
-    // V012: CRON_SECRET is REQUIRED in all environments
-    // If not configured, return 500 to prevent silent bypass
-    if (!cronSecret) {
+    // In development, allow cron without secret for testing
+    const isDev = process.env.NODE_ENV === 'development';
+    if (!cronSecret && !isDev) {
       console.error('[CRON] CRITICAL: CRON_SECRET environment variable is not configured');
       return Errors.internalError('Server configuration error');
     }
 
-    // Validate authorization header matches the secret
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      console.warn('[CRON] Unauthorized access attempt to calculate-rankings');
+    // Verify cron secret (skip in development)
+    if (!isDev && cronSecret !== authorization) {
+      console.warn('[CRON] Unauthorized cron request');
       return Errors.unauthorized('Invalid cron secret');
     }
 
@@ -90,7 +92,7 @@ export async function GET(request: NextRequest) {
  */
 async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCalculationResult> {
   const now = new Date();
-  const periodStart = getPeriodStart(period, now);
+  const periodStart = getPeriodStart(period);
 
   // Get all users with their token usage for this period
   const userStats = await db
@@ -105,7 +107,7 @@ async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCa
       tokenUsage,
       and(
         eq(tokenUsage.userId, users.id),
-        period === 'all_time' ? sql`1=1` : gte(tokenUsage.recordedAt, periodStart)
+        period === 'all_time' ? sql`1=1` : gte(tokenUsage.recordedAt, new Date(periodStart))
       )
     )
     .groupBy(users.id)
@@ -145,7 +147,6 @@ async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCa
   scoredUsers.sort((a, b) => b.compositeScore - a.compositeScore);
 
   // V009: Batch upsert rankings instead of N+1 pattern
-  const periodStartStr = periodStart.toISOString().split('T')[0];
   const pooledDb = getPooledDb();
 
   // Process in batches for better performance
@@ -158,7 +159,7 @@ async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCa
     const batchValues = batch.map((user, index) => ({
       userId: user.userId,
       periodType: period,
-      periodStart: periodStartStr,
+      periodStart: periodStart, // date column expects ISO date string (YYYY-MM-DD)
       rankPosition: batchStart + index + 1,
       totalTokens: user.totalTokens,
       compositeScore: user.compositeScore.toString(),
@@ -196,36 +197,6 @@ async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCa
     usersProcessed: userStats.length,
     rankingsUpdated,
   };
-}
-
-/**
- * Get the start date for a period
- */
-function getPeriodStart(period: PeriodType, now: Date): Date {
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-
-  switch (period) {
-    case 'daily':
-      // Start of today
-      return start;
-    case 'weekly': {
-      // Start of this week (Monday)
-      const day = start.getDay();
-      const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-      start.setDate(diff);
-      return start;
-    }
-    case 'monthly':
-      // Start of this month
-      start.setDate(1);
-      return start;
-    case 'all_time':
-      // Beginning of time (2024-01-01)
-      return new Date('2024-01-01');
-    default:
-      return start;
-  }
 }
 
 /**
@@ -299,7 +270,7 @@ async function updateDailyAggregates(): Promise<void> {
       });
 
       return {
-        userId: stats.userId!,
+        userId: stats.userId as string, // Filtered above, guaranteed non-null
         date: today,
         totalInputTokens: Number(stats.totalInputTokens),
         totalOutputTokens: Number(stats.totalOutputTokens),
