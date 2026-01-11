@@ -89,10 +89,20 @@ export async function GET(request: NextRequest) {
 
 /**
  * Calculate rankings for a specific period
+ *
+ * V013: Uses yesterday's date as the base for ranking calculation.
+ * This ensures that when cron runs daily, it generates rankings for
+ * the previous day, allowing each day to have its own ranking record.
  */
 async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCalculationResult> {
-  const now = new Date();
-  const periodStart = getPeriodStart(period);
+  // Use yesterday as the base date for ranking calculation
+  // This ensures each day gets its own ranking record
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+
+  const periodStart = getPeriodStart(period, yesterday);
+  const now = yesterday; // Use yesterday for updatedAt timestamp
 
   // Get all users with their token usage for this period
   const userStats = await db

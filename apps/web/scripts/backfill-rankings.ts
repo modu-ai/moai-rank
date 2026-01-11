@@ -19,7 +19,15 @@ import * as schema from '../src/db/schema';
 import { users, rankings, tokenUsage } from '../src/db';
 import { eq, and, sql, gte, lt } from 'drizzle-orm';
 
-const db = drizzle(neon(process.env.DATABASE_URL!), { schema });
+function getDatabaseUrl(): string {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error('DATABASE_URL environment variable is required');
+  }
+  return url;
+}
+
+const db = drizzle(neon(getDatabaseUrl()), { schema });
 
 /**
  * Get all unique dates from token_usage table
@@ -48,7 +56,6 @@ async function calculateRankingsForDate(targetDate: string) {
   // For monthly: the 1st of that month
   const date = new Date(targetDate);
   const dayOfWeek = date.getDay();
-  const dayOfMonth = date.getDate();
 
   // Weekly: find Monday of that week
   const weeklyStart = new Date(date);
