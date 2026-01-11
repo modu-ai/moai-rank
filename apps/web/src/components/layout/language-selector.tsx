@@ -10,8 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { type Locale, locales, localeNames, defaultLocale } from '@/i18n/config';
-import { useRouter, usePathname } from 'next/navigation';
+import { type Locale, locales, localeNames } from '@/i18n/config';
+import { useRouter, usePathname } from '@/i18n/routing';
 
 export function LanguageSelector() {
   const locale = useLocale() as Locale;
@@ -25,25 +25,12 @@ export function LanguageSelector() {
   }, []);
 
   const handleLocaleChange = (newLocale: Locale) => {
+    if (newLocale === locale) return;
+
     startTransition(() => {
-      // Build new pathname with new locale prefix
-      // localePrefix: 'as-needed' means default locale (ko) has no prefix
-      let newPathname: string;
-
-      if (locale === defaultLocale) {
-        // Currently on default locale without prefix (e.g., /dashboard)
-        // Add prefix for non-default locales
-        newPathname = newLocale === defaultLocale ? pathname : `/${newLocale}${pathname}`;
-      } else {
-        // Currently on non-default locale with prefix (e.g., /en/dashboard)
-        // Remove current locale prefix and add new one if needed
-        const pathWithoutLocale = pathname.replace(`/${locale}`, '') || '/';
-        newPathname =
-          newLocale === defaultLocale ? pathWithoutLocale : `/${newLocale}${pathWithoutLocale}`;
-      }
-
-      // Navigate to new locale path
-      router.push(newPathname);
+      // usePathname from @/i18n/routing returns path without locale prefix
+      // useRouter from @/i18n/routing handles locale-aware navigation
+      router.replace(pathname, { locale: newLocale });
     });
   };
 
