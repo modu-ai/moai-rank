@@ -1,9 +1,10 @@
 import { Suspense } from 'react';
 import { auth } from '@clerk/nextjs/server';
-import { db, users } from '@/db';
-import { eq } from 'drizzle-orm';
+import { db, users, rankings } from '@/db';
+import { eq, and, sql } from 'drizzle-orm';
 import { Trophy } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import { getPeriodStart } from '@/lib/date-utils';
 import {
   PeriodFilter,
   RankingTable,
@@ -41,25 +42,84 @@ interface LeaderboardResponse {
   };
 }
 
+/**
+ * Get leaderboard data directly from database
+ * This avoids server-side fetch to self which can cause issues in production
+ */
 async function getLeaderboardData(
   period: string,
   page: number,
   limit: number
 ): Promise<LeaderboardResponse> {
   const offset = (page - 1) * limit;
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   try {
-    const response = await fetch(
-      `${baseUrl}/api/leaderboard?period=${period}&limit=${limit}&offset=${offset}`,
-      { cache: 'no-store' }
-    );
+    // Validate period
+    const validPeriods = ['daily', 'weekly', 'monthly', 'all_time'] as const;
+    const validPeriod = validPeriods.includes(period as (typeof validPeriods)[number])
+      ? (period as (typeof validPeriods)[number])
+      : 'daily';
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch leaderboard');
-    }
+    // Get current period start date
+    const periodStart = getPeriodStart(validPeriod);
 
-    return response.json();
+    // Query rankings with user info directly
+    const rankingsData = await db
+      .select({
+        rank: rankings.rankPosition,
+        odUserId: rankings.userId,
+        username: users.githubUsername,
+        avatarUrl: users.githubAvatarUrl,
+        totalTokens: rankings.totalTokens,
+        compositeScore: rankings.compositeScore,
+        sessionCount: rankings.sessionCount,
+        efficiencyScore: rankings.efficiencyScore,
+        privacyMode: users.privacyMode,
+      })
+      .from(rankings)
+      .innerJoin(users, eq(rankings.userId, users.id))
+      .where(and(eq(rankings.periodType, validPeriod), eq(rankings.periodStart, periodStart)))
+      .orderBy(rankings.rankPosition)
+      .limit(limit)
+      .offset(offset);
+
+    // Get total count for pagination
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(rankings)
+      .where(and(eq(rankings.periodType, validPeriod), eq(rankings.periodStart, periodStart)));
+
+    const total = Number(countResult[0]?.count ?? 0);
+
+    // Transform data respecting privacy settings
+    const entries: LeaderboardEntry[] = rankingsData.map((r) => ({
+      rank: r.rank,
+      userId: r.privacyMode ? 'private' : (r.odUserId ?? 'unknown'),
+      username: r.privacyMode ? `User #${r.rank}` : r.username,
+      avatarUrl: r.privacyMode ? null : r.avatarUrl,
+      totalTokens: Number(r.totalTokens),
+      compositeScore: Number(r.compositeScore),
+      sessionCount: r.sessionCount,
+      efficiencyScore: r.efficiencyScore ? Number(r.efficiencyScore) : null,
+      isPrivate: r.privacyMode ?? false,
+    }));
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      success: true,
+      data: {
+        items: entries,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrevious: page > 1,
+        },
+      },
+    };
   } catch (error) {
     console.error('Leaderboard fetch error:', error);
     return { success: false };
