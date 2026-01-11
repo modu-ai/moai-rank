@@ -1,10 +1,12 @@
 import type { NextRequest } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { db, users, rankings } from '@/db';
 import { withRLS } from '@/db/rls';
 import { eq, and, desc } from 'drizzle-orm';
 import { successResponse, Errors, rateLimitResponse } from '@/lib/api-response';
 import { checkRateLimit } from '@/lib/rate-limiter';
+import { generateApiKey } from '@/lib/auth';
+import { randomBytes } from 'node:crypto';
 
 /**
  * Current user info response
@@ -25,6 +27,7 @@ interface CurrentUserInfo {
  *
  * Returns current authenticated user info including API key prefix.
  * Requires Clerk authentication.
+ * Auto-creates user if not found in database.
  *
  * Security:
  * - V014: Rate limiting applied (100 requests/minute per user)
@@ -47,10 +50,44 @@ export async function GET(_request: NextRequest) {
     // Find user by Clerk ID (initial lookup before RLS can be applied)
     const userResult = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
 
-    const user = userResult[0];
+    let user = userResult[0];
 
+    // Auto-create user if not found
     if (!user) {
-      return Errors.notFound('User');
+      const clerkUser = await currentUser();
+
+      if (!clerkUser) {
+        return Errors.unauthorized();
+      }
+
+      // Get GitHub info from external accounts
+      const githubAccount = clerkUser.externalAccounts?.find(
+        (account) => account.provider === 'oauth_github'
+      );
+
+      const githubUsername = githubAccount?.username || clerkUser.username || `user_${randomBytes(4).toString('hex')}`;
+      const githubId = String(githubAccount?.externalId || clerkId);
+      const githubAvatarUrl = githubAccount?.imageUrl || clerkUser.imageUrl || null;
+
+      // Generate API key for new user
+      const { hash, prefix } = generateApiKey(clerkId);
+
+      // Create new user
+      const newUserResult = await db
+        .insert(users)
+        .values({
+          clerkId,
+          githubId,
+          githubUsername,
+          githubAvatarUrl,
+          apiKeyHash: hash,
+          apiKeyPrefix: prefix,
+          userSalt: randomBytes(32).toString('hex'),
+          privacyMode: false,
+        })
+        .returning();
+
+      user = newUserResult[0];
     }
 
     // V015: Use RLS context for ranking query to ensure data isolation

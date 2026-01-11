@@ -10,6 +10,9 @@ import {
 } from '@/lib/api-response';
 import { checkPublicRateLimit, extractIpAddress } from '@/lib/rate-limiter';
 import { getPeriodStart } from '@/lib/date-utils';
+import { withCache } from '@/lib/cache';
+import { leaderboardKey } from '@/cache/keys';
+import { CACHE_TTL } from '@/cache/config';
 
 /**
  * Query parameters schema for leaderboard
@@ -77,50 +80,59 @@ export async function GET(request: NextRequest) {
     // Get current period start date
     const periodStart = getPeriodStart(period);
 
-    // Query rankings with user info
-    const rankingsData = await db
-      .select({
-        rank: rankings.rankPosition,
-        userId: rankings.userId,
-        username: users.githubUsername,
-        avatarUrl: users.githubAvatarUrl,
-        totalTokens: rankings.totalTokens,
-        compositeScore: rankings.compositeScore,
-        sessionCount: rankings.sessionCount,
-        efficiencyScore: rankings.efficiencyScore,
-        privacyMode: users.privacyMode,
-      })
-      .from(rankings)
-      .innerJoin(users, eq(rankings.userId, users.id))
-      .where(and(eq(rankings.periodType, period), eq(rankings.periodStart, periodStart)))
-      .orderBy(rankings.rankPosition)
-      .limit(limit)
-      .offset(offset);
+    // Cache configuration
+    const cacheKey = leaderboardKey(period, limit, offset);
+    const ttl = CACHE_TTL.LEADERBOARD[period];
 
-    // Get total count for pagination
-    const countResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(rankings)
-      .where(and(eq(rankings.periodType, period), eq(rankings.periodStart, periodStart)));
+    // Fetch data with caching
+    const result = await withCache(cacheKey, ttl, async () => {
+      // Query rankings with user info
+      const rankingsData = await db
+        .select({
+          rank: rankings.rankPosition,
+          userId: rankings.userId,
+          username: users.githubUsername,
+          avatarUrl: users.githubAvatarUrl,
+          totalTokens: rankings.totalTokens,
+          compositeScore: rankings.compositeScore,
+          sessionCount: rankings.sessionCount,
+          efficiencyScore: rankings.efficiencyScore,
+          privacyMode: users.privacyMode,
+        })
+        .from(rankings)
+        .innerJoin(users, eq(rankings.userId, users.id))
+        .where(and(eq(rankings.periodType, period), eq(rankings.periodStart, periodStart)))
+        .orderBy(rankings.rankPosition)
+        .limit(limit)
+        .offset(offset);
 
-    const total = Number(countResult[0]?.count ?? 0);
+      // Get total count for pagination
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(rankings)
+        .where(and(eq(rankings.periodType, period), eq(rankings.periodStart, periodStart)));
 
-    // Transform data respecting privacy settings
-    const entries: LeaderboardEntry[] = rankingsData.map((r) => ({
-      rank: r.rank,
-      userId: r.privacyMode ? 'private' : (r.userId ?? 'unknown'),
-      username: r.privacyMode ? `User #${r.rank}` : r.username,
-      avatarUrl: r.privacyMode ? null : r.avatarUrl,
-      totalTokens: Number(r.totalTokens),
-      compositeScore: Number(r.compositeScore),
-      sessionCount: r.sessionCount,
-      efficiencyScore: r.efficiencyScore ? Number(r.efficiencyScore) : null,
-      isPrivate: r.privacyMode ?? false,
-    }));
+      const total = Number(countResult[0]?.count ?? 0);
 
-    const pagination = createPaginationMeta(Math.floor(offset / limit) + 1, limit, total);
+      // Transform data respecting privacy settings
+      const entries: LeaderboardEntry[] = rankingsData.map((r) => ({
+        rank: r.rank,
+        userId: r.privacyMode ? 'private' : (r.userId ?? 'unknown'),
+        username: r.privacyMode ? `User #${r.rank}` : r.username,
+        avatarUrl: r.privacyMode ? null : r.avatarUrl,
+        totalTokens: Number(r.totalTokens),
+        compositeScore: Number(r.compositeScore),
+        sessionCount: r.sessionCount,
+        efficiencyScore: r.efficiencyScore ? Number(r.efficiencyScore) : null,
+        isPrivate: r.privacyMode ?? false,
+      }));
 
-    return paginatedResponse(entries, pagination);
+      const pagination = createPaginationMeta(Math.floor(offset / limit) + 1, limit, total);
+
+      return { entries, pagination };
+    });
+
+    return paginatedResponse(result.entries, result.pagination);
   } catch (error) {
     console.error('[API] Leaderboard error:', error);
     return Errors.internalError();

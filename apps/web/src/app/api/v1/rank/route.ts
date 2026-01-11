@@ -5,6 +5,9 @@ import { successResponse, Errors, corsOptionsResponse } from '@/lib/api-response
 import { validateApiKey, extractApiKey } from '@/lib/auth';
 import { logInvalidApiKey, logRateLimitExceeded } from '@/lib/audit';
 import { checkRateLimit } from '@/lib/rate-limiter';
+import { withCache } from '@/lib/cache';
+import { userRankKey } from '@/cache/keys';
+import { CACHE_TTL } from '@/cache/config';
 
 /**
  * User rank response for CLI
@@ -68,76 +71,80 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's rankings for all periods
-    const rankingsResult = await db
-      .select({
-        periodType: rankings.periodType,
-        rank: rankings.rankPosition,
-        compositeScore: rankings.compositeScore,
-        totalTokens: rankings.totalTokens,
-        sessionCount: rankings.sessionCount,
-        updatedAt: rankings.updatedAt,
-      })
-      .from(rankings)
-      .where(eq(rankings.userId, user.id))
-      .orderBy(desc(rankings.updatedAt));
+    // Fetch user rank data with per-user caching
+    const cacheKey = userRankKey(user.id);
+    const response = await withCache(cacheKey, CACHE_TTL.USER_RANK, async () => {
+      // Get user's rankings for all periods
+      const rankingsResult = await db
+        .select({
+          periodType: rankings.periodType,
+          rank: rankings.rankPosition,
+          compositeScore: rankings.compositeScore,
+          totalTokens: rankings.totalTokens,
+          sessionCount: rankings.sessionCount,
+          updatedAt: rankings.updatedAt,
+        })
+        .from(rankings)
+        .where(eq(rankings.userId, user.id))
+        .orderBy(desc(rankings.updatedAt));
 
-    // Get total participants for each period
-    const participantCounts = await db
-      .select({
-        periodType: rankings.periodType,
-        count: sql<number>`count(DISTINCT ${rankings.userId})`,
-      })
-      .from(rankings)
-      .groupBy(rankings.periodType);
+      // Get total participants for each period
+      const participantCounts = await db
+        .select({
+          periodType: rankings.periodType,
+          count: sql<number>`count(DISTINCT ${rankings.userId})`,
+        })
+        .from(rankings)
+        .groupBy(rankings.periodType);
 
-    const participantMap: Record<string, number> = {};
-    for (const p of participantCounts) {
-      participantMap[p.periodType] = Number(p.count);
-    }
-
-    // Build ranking info map
-    const rankingMap: Record<string, RankInfo> = {};
-    for (const r of rankingsResult) {
-      if (!rankingMap[r.periodType]) {
-        rankingMap[r.periodType] = {
-          position: r.rank,
-          compositeScore: Number(r.compositeScore),
-          totalParticipants: participantMap[r.periodType] ?? 0,
-        };
+      const participantMap: Record<string, number> = {};
+      for (const p of participantCounts) {
+        participantMap[p.periodType] = Number(p.count);
       }
-    }
 
-    // Get aggregated stats
-    const statsResult = await db
-      .select({
-        totalInputTokens: sql<number>`COALESCE(SUM(${dailyAggregates.totalInputTokens}), 0)`,
-        totalOutputTokens: sql<number>`COALESCE(SUM(${dailyAggregates.totalOutputTokens}), 0)`,
-        totalSessions: sql<number>`COALESCE(SUM(${dailyAggregates.sessionCount}), 0)`,
-      })
-      .from(dailyAggregates)
-      .where(eq(dailyAggregates.userId, user.id));
+      // Build ranking info map
+      const rankingMap: Record<string, RankInfo> = {};
+      for (const r of rankingsResult) {
+        if (!rankingMap[r.periodType]) {
+          rankingMap[r.periodType] = {
+            position: r.rank,
+            compositeScore: Number(r.compositeScore),
+            totalParticipants: participantMap[r.periodType] ?? 0,
+          };
+        }
+      }
 
-    const stats = statsResult[0];
-    const totalInputTokens = Number(stats?.totalInputTokens ?? 0);
-    const totalOutputTokens = Number(stats?.totalOutputTokens ?? 0);
+      // Get aggregated stats
+      const statsResult = await db
+        .select({
+          totalInputTokens: sql<number>`COALESCE(SUM(${dailyAggregates.totalInputTokens}), 0)`,
+          totalOutputTokens: sql<number>`COALESCE(SUM(${dailyAggregates.totalOutputTokens}), 0)`,
+          totalSessions: sql<number>`COALESCE(SUM(${dailyAggregates.sessionCount}), 0)`,
+        })
+        .from(dailyAggregates)
+        .where(eq(dailyAggregates.userId, user.id));
 
-    const response: UserRankResponse = {
-      username: user.githubUsername,
-      rankings: {
-        daily: rankingMap.daily ?? null,
-        weekly: rankingMap.weekly ?? null,
-        monthly: rankingMap.monthly ?? null,
-        allTime: rankingMap.all_time ?? null,
-      },
-      stats: {
-        totalTokens: totalInputTokens + totalOutputTokens,
-        totalSessions: Number(stats?.totalSessions ?? 0),
-        inputTokens: totalInputTokens,
-        outputTokens: totalOutputTokens,
-      },
-      lastUpdated: new Date().toISOString(),
-    };
+      const stats = statsResult[0];
+      const totalInputTokens = Number(stats?.totalInputTokens ?? 0);
+      const totalOutputTokens = Number(stats?.totalOutputTokens ?? 0);
+
+      return {
+        username: user.githubUsername,
+        rankings: {
+          daily: rankingMap.daily ?? null,
+          weekly: rankingMap.weekly ?? null,
+          monthly: rankingMap.monthly ?? null,
+          allTime: rankingMap.all_time ?? null,
+        },
+        stats: {
+          totalTokens: totalInputTokens + totalOutputTokens,
+          totalSessions: Number(stats?.totalSessions ?? 0),
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+        },
+        lastUpdated: new Date().toISOString(),
+      } as UserRankResponse;
+    });
 
     return successResponse(response);
   } catch (error) {

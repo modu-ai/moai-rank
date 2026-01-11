@@ -4,6 +4,7 @@ import { eq, sql, gte, and } from 'drizzle-orm';
 import { successResponse, Errors } from '@/lib/api-response';
 import { calculateCompositeScore, calculateEfficiencyScore } from '@/lib/score';
 import { getPeriodStart } from '@/lib/date-utils';
+import { delPattern } from '@/lib/cache';
 
 /**
  * V009: Cron Job Configuration
@@ -72,6 +73,20 @@ export async function GET(request: NextRequest) {
       const result = await calculateRankingsForPeriod(period);
       results.push(result);
     }
+
+    // Invalidate cache after rankings updated
+    // This ensures all APIs return fresh data on next request
+    console.log('[CRON] Invalidating caches...');
+    let totalInvalidated = 0;
+
+    for (const period of periods) {
+      const pattern = `moai-rank:leaderboard:${period}:*`;
+      const count = await delPattern(pattern);
+      totalInvalidated += count;
+      console.log(`[CRON] Invalidated ${count} leaderboard caches for period: ${period}`);
+    }
+
+    console.log(`[CRON] Total caches invalidated: ${totalInvalidated}`);
 
     // Update daily aggregates
     await updateDailyAggregates();

@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, formatCurrency } from '@/lib/utils';
 
 interface TokenBreakdown {
   inputTokens: number;
@@ -77,7 +77,7 @@ export function TokenBreakdownCard({ tokenBreakdown, className }: TokenBreakdown
           </div>
           <div>
             <div className="text-2xl font-bold text-[#216e39] dark:text-[#39d353]">
-              ${estimatedCost.toFixed(2)}
+              {formatCurrency(estimatedCost)}
             </div>
             <div className="text-xs text-muted-foreground">{t('estimatedCost')}</div>
           </div>

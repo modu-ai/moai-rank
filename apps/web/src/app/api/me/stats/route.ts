@@ -1,7 +1,10 @@
-import { auth } from "@clerk/nextjs/server";
-import { db, users, rankings, dailyAggregates, } from "@/db";
-import { eq, desc, and, sql, gte } from "drizzle-orm";
-import { successResponse, Errors } from "@/lib/api-response";
+import { auth } from '@clerk/nextjs/server';
+import { db, users, rankings, dailyAggregates } from '@/db';
+import { eq, desc, and, sql, gte } from 'drizzle-orm';
+import { successResponse, Errors } from '@/lib/api-response';
+import { withCache } from '@/lib/cache';
+import { userStatsKey } from '@/cache/keys';
+import { CACHE_TTL } from '@/cache/config';
 
 /**
  * User detailed statistics response
@@ -60,127 +63,127 @@ export async function GET() {
     }
 
     // Find user by Clerk ID
-    const userResult = await db
-      .select()
-      .from(users)
-      .where(eq(users.clerkId, clerkId))
-      .limit(1);
+    const userResult = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
 
     const user = userResult[0];
 
     if (!user) {
-      return Errors.notFound("User");
+      return Errors.notFound('User');
     }
 
-    // Get all rankings for the user
-    const rankingsResult = await db
-      .select({
-        periodType: rankings.periodType,
-        rank: rankings.rankPosition,
-        compositeScore: rankings.compositeScore,
-        totalTokens: rankings.totalTokens,
-        sessionCount: rankings.sessionCount,
-      })
-      .from(rankings)
-      .where(eq(rankings.userId, user.id))
-      .orderBy(desc(rankings.updatedAt));
+    // Cache key for this user's stats
+    const cacheKey = userStatsKey(user.id);
 
-    // Get total user count for percentile calculation
-    const totalUsersResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(users);
-    const totalUsers = Number(totalUsersResult[0]?.count ?? 1);
+    // Fetch user stats with caching (most expensive query)
+    const stats = await withCache(cacheKey, CACHE_TTL.USER_STATS, async () => {
+      // Get all rankings for the user
+      const rankingsResult = await db
+        .select({
+          periodType: rankings.periodType,
+          rank: rankings.rankPosition,
+          compositeScore: rankings.compositeScore,
+          totalTokens: rankings.totalTokens,
+          sessionCount: rankings.sessionCount,
+        })
+        .from(rankings)
+        .where(eq(rankings.userId, user.id))
+        .orderBy(desc(rankings.updatedAt));
 
-    // Build ranking info map
-    const rankingMap: Record<string, RankInfo> = {};
-    for (const r of rankingsResult) {
-      if (!rankingMap[r.periodType]) {
-        const percentile = ((totalUsers - r.rank) / totalUsers) * 100;
-        rankingMap[r.periodType] = {
-          position: r.rank,
-          compositeScore: Number(r.compositeScore),
-          percentile: Math.round(percentile * 100) / 100,
-        };
+      // Get total user count for percentile calculation
+      const totalUsersResult = await db.select({ count: sql<number>`count(*)` }).from(users);
+      const totalUsers = Number(totalUsersResult[0]?.count ?? 1);
+
+      // Build ranking info map
+      const rankingMap: Record<string, RankInfo> = {};
+      for (const r of rankingsResult) {
+        if (!rankingMap[r.periodType]) {
+          const percentile = ((totalUsers - r.rank) / totalUsers) * 100;
+          rankingMap[r.periodType] = {
+            position: r.rank,
+            compositeScore: Number(r.compositeScore),
+            percentile: Math.round(percentile * 100) / 100,
+          };
+        }
       }
-    }
 
-    // Get daily aggregates for last 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      // Get daily aggregates for last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const dailyStatsResult = await db
-      .select({
-        date: dailyAggregates.date,
-        inputTokens: dailyAggregates.totalInputTokens,
-        outputTokens: dailyAggregates.totalOutputTokens,
-        sessions: dailyAggregates.sessionCount,
-      })
-      .from(dailyAggregates)
-      .where(
-        and(
-          eq(dailyAggregates.userId, user.id),
-          gte(dailyAggregates.date, thirtyDaysAgo.toISOString().split("T")[0])
+      const dailyStatsResult = await db
+        .select({
+          date: dailyAggregates.date,
+          inputTokens: dailyAggregates.totalInputTokens,
+          outputTokens: dailyAggregates.totalOutputTokens,
+          sessions: dailyAggregates.sessionCount,
+        })
+        .from(dailyAggregates)
+        .where(
+          and(
+            eq(dailyAggregates.userId, user.id),
+            gte(dailyAggregates.date, thirtyDaysAgo.toISOString().split('T')[0])
+          )
         )
-      )
-      .orderBy(desc(dailyAggregates.date));
+        .orderBy(desc(dailyAggregates.date));
 
-    const dailyStats: DailyStats[] = dailyStatsResult.map((d) => ({
-      date: d.date,
-      inputTokens: Number(d.inputTokens ?? 0),
-      outputTokens: Number(d.outputTokens ?? 0),
-      sessions: d.sessions ?? 0,
-    }));
+      const dailyStats: DailyStats[] = dailyStatsResult.map((d) => ({
+        date: d.date,
+        inputTokens: Number(d.inputTokens ?? 0),
+        outputTokens: Number(d.outputTokens ?? 0),
+        sessions: d.sessions ?? 0,
+      }));
 
-    // Calculate totals from daily stats
-    const totalInputTokens = dailyStats.reduce((sum, d) => sum + d.inputTokens, 0);
-    const totalOutputTokens = dailyStats.reduce((sum, d) => sum + d.outputTokens, 0);
-    const totalSessions = dailyStats.reduce((sum, d) => sum + d.sessions, 0);
+      // Calculate totals from daily stats
+      const totalInputTokens = dailyStats.reduce((sum, d) => sum + d.inputTokens, 0);
+      const totalOutputTokens = dailyStats.reduce((sum, d) => sum + d.outputTokens, 0);
+      const totalSessions = dailyStats.reduce((sum, d) => sum + d.sessions, 0);
 
-    // Calculate streaks
-    const streaks = calculateStreaks(dailyStats);
+      // Calculate streaks
+      const streaks = calculateStreaks(dailyStats);
 
-    // Calculate efficiency score
-    const efficiencyScore =
-      totalInputTokens > 0
-        ? Math.round((totalOutputTokens / totalInputTokens) * 10000) / 10000
-        : 0;
+      // Calculate efficiency score
+      const efficiencyScore =
+        totalInputTokens > 0
+          ? Math.round((totalOutputTokens / totalInputTokens) * 10000) / 10000
+          : 0;
 
-    // Split into 7-day and 30-day trends
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
+      // Split into 7-day and 30-day trends
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
 
-    const last7Days = dailyStats.filter((d) => d.date >= sevenDaysAgoStr);
-    const last30Days = dailyStats;
+      const last7Days = dailyStats.filter((d) => d.date >= sevenDaysAgoStr);
+      const last30Days = dailyStats;
 
-    const stats: UserDetailedStats = {
-      overview: {
-        totalInputTokens,
-        totalOutputTokens,
-        totalTokens: totalInputTokens + totalOutputTokens,
-        totalSessions,
-        averageTokensPerSession:
-          totalSessions > 0
-            ? Math.round((totalInputTokens + totalOutputTokens) / totalSessions)
-            : 0,
-        efficiencyScore,
-      },
-      rankings: {
-        daily: rankingMap.daily ?? null,
-        weekly: rankingMap.weekly ?? null,
-        monthly: rankingMap.monthly ?? null,
-        allTime: rankingMap.all_time ?? null,
-      },
-      trends: {
-        last7Days,
-        last30Days,
-      },
-      streaks,
-    };
+      return {
+        overview: {
+          totalInputTokens,
+          totalOutputTokens,
+          totalTokens: totalInputTokens + totalOutputTokens,
+          totalSessions,
+          averageTokensPerSession:
+            totalSessions > 0
+              ? Math.round((totalInputTokens + totalOutputTokens) / totalSessions)
+              : 0,
+          efficiencyScore,
+        },
+        rankings: {
+          daily: rankingMap.daily ?? null,
+          weekly: rankingMap.weekly ?? null,
+          monthly: rankingMap.monthly ?? null,
+          allTime: rankingMap.all_time ?? null,
+        },
+        trends: {
+          last7Days,
+          last30Days,
+        },
+        streaks,
+      } as UserDetailedStats;
+    });
 
     return successResponse(stats);
   } catch (error) {
-    console.error("[API] Me stats error:", error);
+    console.error('[API] Me stats error:', error);
     return Errors.internalError();
   }
 }
