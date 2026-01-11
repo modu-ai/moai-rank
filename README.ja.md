@@ -410,7 +410,7 @@ graph TB
     RATE --> REDIS
     CACHE --> REDIS
     CRON -->|日次ランク計算| API
-    CRON -->|データクリーンアップ (2AM)| NEON
+    CRON -->|"データクリーンアップ (2AM)"| NEON
     VERCEL --> API
 ```
 

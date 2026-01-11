@@ -410,7 +410,7 @@ graph TB
     RATE --> REDIS
     CACHE --> REDIS
     CRON -->|Daily Ranking Calculation| API
-    CRON -->|Data Cleanup (2AM)| NEON
+    CRON -->|"Data Cleanup (2AM)"| NEON
     VERCEL --> API
 ```
 

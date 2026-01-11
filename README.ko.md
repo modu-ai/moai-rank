@@ -412,7 +412,7 @@ graph TB
     RATE --> REDIS
     CACHE --> REDIS
     CRON -->|일간 랭킹 계산| API
-    CRON -->|데이터 정리(2AM)| NEON
+    CRON -->|"데이터 정리(2AM)"| NEON
     VERCEL --> API
 ```
 
