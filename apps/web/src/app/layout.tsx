@@ -3,10 +3,7 @@ import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Noto_Sans, Noto_Sans_Mono } from 'next/font/google';
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
-import { Header } from '@/components/layout/header';
-import { Footer } from '@/components/layout/footer';
+import { getLocale } from 'next-intl/server';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import './globals.css';
 
@@ -106,7 +103,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getLocale();
-  const messages = await getMessages();
 
   return (
     <ClerkProvider>
@@ -134,14 +130,8 @@ export default async function RootLayout({
             forcedTheme="light"
             disableTransitionOnChange
           >
-            <NextIntlClientProvider messages={messages}>
-              <div className="relative flex min-h-screen flex-col">
-                <Header />
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </div>
-              <Analytics />
-            </NextIntlClientProvider>
+            {children}
+            <Analytics />
           </ThemeProvider>
         </body>
       </html>

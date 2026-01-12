@@ -1,4 +1,8 @@
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
 import { locales } from '@/i18n/config';
+import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
 
 /**
  * Generate static params for all supported locales
@@ -9,9 +13,19 @@ export function generateStaticParams() {
 }
 
 /**
- * Locale layout - passes through children without additional wrapping
- * The root layout handles all providers and styling
+ * Locale layout - provides NextIntlClientProvider for client components
+ * This ensures translations are updated when locale changes
  */
-export default function LocaleLayout({ children }: { children: React.ReactNode }) {
-  return children;
+export default async function LocaleLayout({ children }: { children: React.ReactNode }) {
+  const messages = await getMessages();
+
+  return (
+    <NextIntlClientProvider messages={messages}>
+      <div className="relative flex min-h-screen flex-col">
+        <Header />
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </div>
+    </NextIntlClientProvider>
+  );
 }
