@@ -77,8 +77,11 @@ export async function GET(request: NextRequest) {
 
     const { period, limit, offset } = parseResult.data;
 
-    // Get current period start date
-    const periodStart = getPeriodStart(period);
+    // Get period start date using yesterday as base to match cron job calculation
+    // The cron job calculates rankings based on yesterday's complete data
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const periodStart = getPeriodStart(period, yesterday);
 
     // Cache configuration
     const cacheKey = leaderboardKey(period, limit, offset);

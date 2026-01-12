@@ -20,12 +20,16 @@ const intlMiddleware = createMiddleware(routing);
 
 /**
  * Public routes that don't require authentication
+ * Note: Locale-prefixed routes must also be included for next-intl compatibility
  */
 const isPublicRoute = createRouteMatcher([
-  // Pages
+  // Pages (root and locale-prefixed)
   '/',
+  '/(en|ko|ja|zh)',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/(en|ko|ja|zh)/sign-in(.*)',
+  '/(en|ko|ja|zh)/sign-up(.*)',
 
   // Webhooks
   '/api/webhooks(.*)',
