@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -6,7 +6,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 
 export function LeaderboardSkeleton() {
   return (
@@ -21,21 +21,15 @@ export function LeaderboardSkeleton() {
             <TableRow>
               <TableHead className="w-20">Rank</TableHead>
               <TableHead>User</TableHead>
-              <TableHead className="hidden text-right sm:table-cell">
-                Score
-              </TableHead>
+              <TableHead className="hidden text-right sm:table-cell">Score</TableHead>
               <TableHead className="text-right">Tokens</TableHead>
-              <TableHead className="hidden text-right md:table-cell">
-                Sessions
-              </TableHead>
-              <TableHead className="hidden text-right lg:table-cell">
-                Efficiency
-              </TableHead>
+              <TableHead className="hidden text-right md:table-cell">Sessions</TableHead>
+              <TableHead className="hidden text-right lg:table-cell">Efficiency</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {Array.from({ length: 10 }).map((_, i) => (
-              <TableRow key={i}>
+            {Array.from({ length: 10 }, (_, i) => `skeleton-row-${i}`).map((rowId) => (
+              <TableRow key={rowId}>
                 <TableCell>
                   <Skeleton className="h-5 w-12" />
                 </TableCell>

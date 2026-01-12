@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { ArrowLeft, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,8 +62,8 @@ function SettingsSkeleton() {
         <Skeleton className="h-8 w-48" />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        {Array.from({ length: 2 }).map((_, i) => (
-          <Card key={i}>
+        {['api-key', 'privacy'].map((cardId) => (
+          <Card key={cardId}>
             <CardHeader className="pb-2">
               <Skeleton className="h-6 w-32" />
               <Skeleton className="h-4 w-48" />

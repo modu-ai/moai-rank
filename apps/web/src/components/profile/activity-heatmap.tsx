@@ -187,12 +187,15 @@ export function ActivityHeatmap({ dailyActivity, className }: ActivityHeatmapPro
             {/* Heatmap cells */}
             <TooltipProvider delayDuration={100}>
               <div className="flex flex-1 justify-between gap-[2px]">
-                {grid.map((week, weekIndex) => (
-                  <div key={weekIndex} className="flex flex-1 flex-col gap-[2px]">
-                    {week.map((day, dayIndex) => {
+                {grid.map((week) => {
+                  const weekKey = week[0]?.date.toISOString().split('T')[0] ?? 'empty';
+                  return (
+                  <div key={weekKey} className="flex flex-1 flex-col gap-[2px]">
+                    {week.map((day) => {
                       const tokens = day.activity?.tokens ?? 0;
                       const sessions = day.activity?.sessions ?? 0;
                       const level = getIntensityLevel(tokens, maxTokens);
+                      const dateKey = day.date.toISOString().split('T')[0];
                       const dateStr = day.date.toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -200,7 +203,7 @@ export function ActivityHeatmap({ dailyActivity, className }: ActivityHeatmapPro
                       });
 
                       return (
-                        <Tooltip key={`${weekIndex}-${dayIndex}`}>
+                        <Tooltip key={dateKey}>
                           <TooltipTrigger asChild>
                             <div
                               className={`aspect-square w-full rounded-sm transition-colors ${getIntensityColor(level)}`}
@@ -223,7 +226,8 @@ export function ActivityHeatmap({ dailyActivity, className }: ActivityHeatmapPro
                       );
                     })}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </TooltipProvider>
           </div>

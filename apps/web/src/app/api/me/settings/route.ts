@@ -1,9 +1,9 @@
-import { auth } from "@clerk/nextjs/server";
-import { z } from "zod";
-import { db, users } from "@/db";
-import { eq } from "drizzle-orm";
-import { successResponse, Errors } from "@/lib/api-response";
-import { logPrivacyModeChanged, logUserSettingsUpdated } from "@/lib/audit";
+import { auth } from '@clerk/nextjs/server';
+import { z } from 'zod';
+import { db, users } from '@/db';
+import { eq } from 'drizzle-orm';
+import { successResponse, Errors } from '@/lib/api-response';
+import { logPrivacyModeChanged, logUserSettingsUpdated } from '@/lib/audit';
 
 /**
  * Settings update schema
@@ -42,14 +42,14 @@ export async function PATCH(request: Request) {
     try {
       body = await request.json();
     } catch {
-      return Errors.validationError("Invalid JSON body");
+      return Errors.validationError('Invalid JSON body');
     }
 
     // Validate input
     const parseResult = UpdateSettingsSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return Errors.validationError("Invalid settings data", {
+      return Errors.validationError('Invalid settings data', {
         errors: parseResult.error.flatten().fieldErrors,
       });
     }
@@ -58,20 +58,16 @@ export async function PATCH(request: Request) {
 
     // Check if there's anything to update
     if (Object.keys(updates).length === 0) {
-      return Errors.validationError("No settings to update");
+      return Errors.validationError('No settings to update');
     }
 
     // Find user by Clerk ID
-    const userResult = await db
-      .select()
-      .from(users)
-      .where(eq(users.clerkId, clerkId))
-      .limit(1);
+    const userResult = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
 
     const user = userResult[0];
 
     if (!user) {
-      return Errors.notFound("User");
+      return Errors.notFound('User');
     }
 
     // Track changes for audit log
@@ -106,8 +102,8 @@ export async function PATCH(request: Request) {
     const updated = updatedResult[0];
 
     // Log security events
-    if (changes.privacyMode !== undefined) {
-      await logPrivacyModeChanged(user.id, updates.privacyMode!, request);
+    if (changes.privacyMode !== undefined && updates.privacyMode !== undefined) {
+      await logPrivacyModeChanged(user.id, updates.privacyMode, request);
     }
 
     if (Object.keys(changes).length > 0) {
@@ -121,7 +117,7 @@ export async function PATCH(request: Request) {
 
     return successResponse(response);
   } catch (error) {
-    console.error("[API] Settings update error:", error);
+    console.error('[API] Settings update error:', error);
     return Errors.internalError();
   }
 }
@@ -153,7 +149,7 @@ export async function GET() {
     const user = userResult[0];
 
     if (!user) {
-      return Errors.notFound("User");
+      return Errors.notFound('User');
     }
 
     const response: UserSettings = {
@@ -163,7 +159,7 @@ export async function GET() {
 
     return successResponse(response);
   } catch (error) {
-    console.error("[API] Settings get error:", error);
+    console.error('[API] Settings get error:', error);
     return Errors.internalError();
   }
 }

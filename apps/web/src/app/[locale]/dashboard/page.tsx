@@ -4,7 +4,7 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { Trophy, Calendar, Zap, Activity, User, Github, Settings } from 'lucide-react';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { db, users, rankings, dailyAggregates, sessions, tokenUsage } from '@/db';
 import { eq, desc, sql, and, gte } from 'drizzle-orm';
 import { generateApiKey } from '@/lib/auth';

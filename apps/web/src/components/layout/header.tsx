@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { auth } from '@clerk/nextjs/server';
 import { SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import { Trophy, LayoutDashboard } from 'lucide-react';

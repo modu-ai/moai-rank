@@ -60,8 +60,11 @@ async function getLeaderboardData(
       ? (period as (typeof validPeriods)[number])
       : 'daily';
 
-    // Get current period start date
-    const periodStart = getPeriodStart(validPeriod);
+    // Get period start date using yesterday as base to match cron job calculation
+    // The cron job calculates rankings based on yesterday's complete data
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const periodStart = getPeriodStart(validPeriod, yesterday);
 
     // Query rankings with user info directly
     const rankingsData = await db
