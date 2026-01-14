@@ -23,19 +23,21 @@ export function getPeriodStart(period: string, baseDate?: Date): string {
 
   switch (period) {
     case 'daily':
-      return start.toISOString().split('T')[0];
+      // Use local timezone instead of UTC to ensure consistent date calculation
+      // en-CA locale returns YYYY-MM-DD format (ISO 8601 compatible)
+      return start.toLocaleDateString('en-CA');
 
     case 'weekly': {
       // Find Monday of current week
       const day = start.getDay();
       const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Sunday = 0, treat as -6
       start.setDate(diff);
-      return start.toISOString().split('T')[0];
+      return start.toLocaleDateString('en-CA');
     }
 
     case 'monthly':
       start.setDate(1); // First day of month
-      return start.toISOString().split('T')[0];
+      return start.toLocaleDateString('en-CA');
 
     case 'all_time':
       return '2024-01-01'; // Epoch start for rankings
