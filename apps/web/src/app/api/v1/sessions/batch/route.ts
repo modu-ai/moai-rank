@@ -27,6 +27,16 @@ const MAX_CACHE_TOKENS = 100_000_000;
 const SESSION_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
 
 /**
+ * Code metrics schema for vibe coding analytics
+ */
+const CodeMetricsSchema = z.object({
+  linesAdded: z.number().int().min(0).optional().default(0),
+  linesDeleted: z.number().int().min(0).optional().default(0),
+  filesModified: z.number().int().min(0).optional().default(0),
+  filesCreated: z.number().int().min(0).optional().default(0),
+});
+
+/**
  * Single session schema for batch
  */
 const BatchSessionSchema = z.object({
@@ -49,6 +59,12 @@ const BatchSessionSchema = z.object({
   outputTokens: z.number().int().min(0).max(MAX_OUTPUT_TOKENS),
   cacheCreationTokens: z.number().int().min(0).max(MAX_CACHE_TOKENS).optional().default(0),
   cacheReadTokens: z.number().int().min(0).max(MAX_CACHE_TOKENS).optional().default(0),
+  // Vibe coding analytics fields
+  startedAt: z.string().datetime().optional(),
+  durationSeconds: z.number().int().min(0).max(86400).optional(), // Max 24 hours
+  turnCount: z.number().int().min(0).max(10000).optional(),
+  toolUsage: z.record(z.string(), z.number().int().min(0)).optional(),
+  codeMetrics: CodeMetricsSchema.optional(),
 });
 
 const BatchRequestSchema = z.object({
@@ -206,13 +222,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // === Phase 3: Bulk INSERT sessions ===
+    // === Phase 3: Bulk INSERT sessions with vibe coding analytics ===
     const sessionInsertValues = newSessions.map((s) => ({
       userId: user.id,
       serverSessionHash: s.serverHash,
       anonymousProjectId: s.data.anonymousProjectId,
+      startedAt: s.data.startedAt ? new Date(s.data.startedAt) : undefined,
       endedAt: new Date(s.data.endedAt),
+      durationSeconds: s.data.durationSeconds,
       modelName: s.data.modelName,
+      turnCount: s.data.turnCount,
+      toolUsage: s.data.toolUsage,
+      codeMetrics: s.data.codeMetrics,
     }));
 
     const insertedSessions = await db

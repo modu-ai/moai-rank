@@ -46,6 +46,16 @@ const ANOMALY_THRESHOLD_MULTIPLIER = 10;
 const SESSION_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
 
 /**
+ * Code metrics schema for vibe coding analytics
+ */
+const CodeMetricsSchema = z.object({
+  linesAdded: z.number().int().min(0).optional().default(0),
+  linesDeleted: z.number().int().min(0).optional().default(0),
+  filesModified: z.number().int().min(0).optional().default(0),
+  filesCreated: z.number().int().min(0).optional().default(0),
+});
+
+/**
  * Session creation request schema
  */
 const CreateSessionSchema = z.object({
@@ -92,6 +102,12 @@ const CreateSessionSchema = z.object({
     .max(MAX_CACHE_TOKENS, 'Cache read tokens exceed limit')
     .optional()
     .default(0),
+  // Vibe coding analytics fields
+  startedAt: z.string().datetime().optional(),
+  durationSeconds: z.number().int().min(0).max(86400).optional(), // Max 24 hours
+  turnCount: z.number().int().min(0).max(10000).optional(),
+  toolUsage: z.record(z.string(), z.number().int().min(0)).optional(),
+  codeMetrics: CodeMetricsSchema.optional(),
 });
 
 /**
@@ -266,15 +282,20 @@ export async function POST(request: NextRequest) {
       return Errors.validationError('Session already recorded');
     }
 
-    // Insert session
+    // Insert session with vibe coding analytics
     const sessionResult = await db
       .insert(sessions)
       .values({
         userId: user.id,
         serverSessionHash: serverHash,
         anonymousProjectId: sessionData.anonymousProjectId,
+        startedAt: sessionData.startedAt ? new Date(sessionData.startedAt) : undefined,
         endedAt: new Date(sessionData.endedAt),
+        durationSeconds: sessionData.durationSeconds,
         modelName: sessionData.modelName,
+        turnCount: sessionData.turnCount,
+        toolUsage: sessionData.toolUsage,
+        codeMetrics: sessionData.codeMetrics,
       })
       .returning({ id: sessions.id });
 

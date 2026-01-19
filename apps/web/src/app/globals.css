@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Use class-based dark mode instead of system preference */
+@variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --background: oklch(1 0 0);
