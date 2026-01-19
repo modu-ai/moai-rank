@@ -189,7 +189,9 @@ export default async function HomePage({ searchParams }: PageProps) {
     <div className="container mx-auto max-w-6xl px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-        <p className="mt-2 text-muted-foreground">{t('description')}</p>
+        <p className="mt-2 text-muted-foreground">
+          {t(`periodDescription.${period}` as 'periodDescription.daily')}
+        </p>
       </div>
 
       <div className="space-y-6">

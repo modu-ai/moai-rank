@@ -32,6 +32,12 @@
   "home": {
     "title": "리더보드",
     "description": "커뮤니티와 AI 토큰 사용량을 비교해 보세요",
+    "periodDescription": {
+      "daily": "어제 활동한 사용자의 순위입니다",
+      "weekly": "이번 주 월요일부터 활동한 사용자의 순위입니다",
+      "monthly": "이번 달 1일부터 활동한 사용자의 순위입니다",
+      "all_time": "전체 기간 동안 활동한 모든 사용자의 순위입니다"
+    },
     "unableToLoad": "순위를 불러올 수 없습니다",
     "tryAgainLater": "나중에 다시 시도해 주세요.",
     "noRankingsYet": "아직 순위가 없습니다",

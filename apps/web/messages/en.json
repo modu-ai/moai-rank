@@ -32,6 +32,12 @@
   "home": {
     "title": "Leaderboard",
     "description": "See how your AI token usage compares to the community",
+    "periodDescription": {
+      "daily": "Rankings of users who were active yesterday",
+      "weekly": "Rankings of users active since this Monday",
+      "monthly": "Rankings of users active since the 1st of this month",
+      "all_time": "Rankings of all users across all time"
+    },
     "unableToLoad": "Unable to load rankings",
     "tryAgainLater": "Please try again later.",
     "noRankingsYet": "No rankings yet",

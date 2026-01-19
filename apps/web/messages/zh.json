@@ -32,6 +32,12 @@
   "home": {
     "title": "排行榜",
     "description": "查看您的AI令牌使用量与社区的比较",
+    "periodDescription": {
+      "daily": "昨天活跃用户的排名",
+      "weekly": "本周一以来活跃用户的排名",
+      "monthly": "本月1日以来活跃用户的排名",
+      "all_time": "全时段所有用户的排名"
+    },
     "unableToLoad": "无法加载排名",
     "tryAgainLater": "请稍后再试。",
     "noRankingsYet": "暂无排名",
