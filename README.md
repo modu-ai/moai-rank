@@ -103,7 +103,7 @@ Options:
   --help    Show help message
 
 Commands:
-  register   Register with MoAI Rank via GitHub OAuth
+  login      Login to MoAI Rank via GitHub OAuth (alias: register)
   status     Show current rank and statistics
   exclude    Exclude project from session tracking
   include    Re-include previously excluded project
@@ -112,11 +112,13 @@ Commands:
 
 ### Detailed Command Explanations
 
-#### 1. register - GitHub OAuth Registration
+#### 1. login - GitHub OAuth Login
 
 ```bash
-moai rank register
+moai rank login
 ```
+
+> **Note**: `moai rank register` is still supported as an alias for backward compatibility.
 
 **How It Works**:
 
@@ -128,10 +130,10 @@ moai rank register
 **Execution Example**:
 
 ```bash
-❯ moai rank register
+❯ moai rank login
 
-╭──────────────────────────── Registration ────────────────────────────╮
-│ MoAI Rank Registration                                               │
+╭──────────────────────────────── Login ───────────────────────────────╮
+│ MoAI Rank Login                                                      │
 │                                                                      │
 │ This will open your browser to authorize with GitHub.                │
 │ After authorization, your API key will be stored securely.           │
@@ -140,8 +142,8 @@ moai rank register
 Opening browser for GitHub authorization...
 Waiting for authorization (timeout: 5 minutes)...
 
-╭───────────────────────── Registration Complete ──────────────────────╮
-│ Successfully registered as your-github-id                            │
+╭─────────────────────────── Login Complete ───────────────────────────╮
+│ Successfully logged in as your-github-id                             │
 │                                                                      │
 │ API Key: moai_rank_a9011fac_c...                                     │
 │ Stored in: ~/.moai/rank/credentials.json                             │

@@ -103,7 +103,7 @@ MoAI Rank - Claude Code 令牌使用量排行榜
   --help    显示帮助信息
 
 命令:
-  register   通过 GitHub OAuth 注册 MoAI Rank
+  login      通过 GitHub OAuth 登录 MoAI Rank (别名: register)
   status     显示当前排名和统计信息
   exclude    将项目从会话追踪中排除
   include    重新包含之前排除的项目
@@ -112,11 +112,13 @@ MoAI Rank - Claude Code 令牌使用量排行榜
 
 ### 命令详细说明
 
-#### 1. register - GitHub OAuth 注册
+#### 1. login - GitHub OAuth 登录
 
 ```bash
-moai rank register
+moai rank login
 ```
+
+> **注意**: `moai rank register` 作为别名继续支持,以保持向后兼容性。
 
 **工作原理**:
 
@@ -128,10 +130,10 @@ moai rank register
 **执行示例**:
 
 ```bash
-❯ moai rank register
+❯ moai rank login
 
-╭──────────────────────────── Registration ────────────────────────────╮
-│ MoAI Rank Registration                                               │
+╭──────────────────────────────── Login ───────────────────────────────╮
+│ MoAI Rank Login                                                      │
 │                                                                      │
 │ This will open your browser to authorize with GitHub.                │
 │ After authorization, your API key will be stored securely.           │
@@ -140,8 +142,8 @@ moai rank register
 Opening browser for GitHub authorization...
 Waiting for authorization (timeout: 5 minutes)...
 
-╭───────────────────────── Registration Complete ──────────────────────╮
-│ Successfully registered as your-github-id                            │
+╭─────────────────────────── Login Complete ───────────────────────────╮
+│ Successfully logged in as your-github-id                             │
 │                                                                      │
 │ API Key: moai_rank_a9011fac_c...                                     │
 │ Stored in: ~/.moai/rank/credentials.json                             │

@@ -103,7 +103,7 @@ Claude Code 세션을 추적하고 리더보드에서 경쟁하세요.
   --help    도움말 표시
 
 명령어:
-  register   GitHub OAuth로 MoAI Rank에 등록
+  login      GitHub OAuth로 MoAI Rank에 로그인 (별칭: register)
   status     현재 순위와 통계 표시
   exclude    프로젝트를 세션 추적에서 제외
   include    이전에 제외된 프로젝트를 다시 포함
@@ -112,11 +112,13 @@ Claude Code 세션을 추적하고 리더보드에서 경쟁하세요.
 
 ### 명령어 상세 설명
 
-#### 1. register - GitHub OAuth 등록
+#### 1. login - GitHub OAuth 로그인
 
 ```bash
-moai rank register
+moai rank login
 ```
+
+> **참고**: `moai rank register`는 하위 호환성을 위해 별칭으로 계속 지원됩니다.
 
 **작동 원리**:
 
@@ -128,10 +130,10 @@ moai rank register
 **실행 예시**:
 
 ```bash
-❯ moai rank register
+❯ moai rank login
 
-╭──────────────────────────── Registration ────────────────────────────╮
-│ MoAI Rank Registration                                               │
+╭──────────────────────────────── Login ───────────────────────────────╮
+│ MoAI Rank Login                                                      │
 │                                                                      │
 │ This will open your browser to authorize with GitHub.                │
 │ After authorization, your API key will be stored securely.           │
@@ -140,8 +142,8 @@ moai rank register
 Opening browser for GitHub authorization...
 Waiting for authorization (timeout: 5 minutes)...
 
-╭───────────────────────── Registration Complete ──────────────────────╮
-│ Successfully registered as your-github-id                            │
+╭─────────────────────────── Login Complete ───────────────────────────╮
+│ Successfully logged in as your-github-id                             │
 │                                                                      │
 │ API Key: moai_rank_a9011fac_c...                                     │
 │ Stored in: ~/.moai/rank/credentials.json                             │
