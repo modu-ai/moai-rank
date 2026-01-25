@@ -10,6 +10,10 @@ A competitive leaderboard platform for tracking Claude Code token usage. Track y
 
 [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [中文](README.zh.md)
 
+> **⚠️ Important Notice (2025-01-25)**
+>
+> Due to a production environment migration, **all existing accounts have been reset**. If you were previously registered, please **sign up again** at [rank.mo.ai.kr](https://rank.mo.ai.kr). We apologize for any inconvenience.
+
 ---
 
 ## 📚 Everyone's AI Agentic Coding Lecture

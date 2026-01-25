@@ -10,6 +10,10 @@
 
 [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [中文](README.zh.md)
 
+> **⚠️ 重要公告 (2025-01-25)**
+>
+> 由于生产环境迁移，**所有现有账户已被重置**。如果您之前已注册，请在 [rank.mo.ai.kr](https://rank.mo.ai.kr) **重新注册**。给您带来不便，深表歉意。
+
 ---
 
 ## 📚 大家 AI 代理编码讲座
