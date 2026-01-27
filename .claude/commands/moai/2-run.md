@@ -1,8 +1,8 @@
 ---
-description: "Execute TDD implementation cycle"
+description: "Execute implementation cycle (DDD methodology)"
 argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
 type: workflow
-allowed-tools: Task, AskUserQuestion, TodoWrite
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 
@@ -16,22 +16,25 @@ model: inherit
 ## Essential Files
 
 @.moai/config/config.yaml
+@.moai/config/sections/quality.yaml
 @.moai/specs/
 
 ---
 
-# MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation
+# MoAI-ADK Step 2: Execute Implementation (Run) - DDD Implementation
 
 **User Interaction Architecture**: AskUserQuestion must be used at COMMAND level only. Subagents via Task() are stateless and cannot interact with users. Collect all approvals BEFORE delegating phase execution.
 
 **Execution Model**: Commands orchestrate through `Task()` tool only. No direct tool usage.
 
-**Delegation Pattern**: Sequential phase-based agent delegation with 5 phases (SDD 2025 Standard):
+**Development Methodology**: This command uses DDD (Domain-Driven Development) with ANALYZE-PRESERVE-IMPROVE cycle for all implementations.
+
+**Delegation Pattern**: Sequential phase-based agent delegation with 5 phases:
 
 - Phase 1: SPEC analysis and execution plan creation
 - Phase 1.5: Tasks decomposition (SDD 2025 - explicit task breakdown)
-- Phase 2: TDD implementation (RED → GREEN → REFACTOR)
-- Phase 2.5: Quality validation (TRUST 5 assessment)
+- Phase 2: DDD implementation (ANALYZE → PRESERVE → IMPROVE)
+- Phase 2.5: Quality validation (behavior preservation + TRUST 5)
 - Phase 3: Git commit management
 - Phase 4: Completion and next steps guidance
 
@@ -39,7 +42,7 @@ model: inherit
 
 ## Command Purpose
 
-Execute TDD implementation of SPEC requirements through complete agent delegation.
+Execute implementation of SPEC requirements through complete agent delegation using DDD (Domain-Driven Development) methodology.
 
 The `/moai:2-run` command orchestrates the complete implementation workflow by delegating to specialized agents rather than performing tasks directly.
 
@@ -80,10 +83,10 @@ Phase 1 (1_analysis_planning):
 - Output: Execution plan with requirements and success criteria
 - Checkpoint: User approval required
 
-Phase 2 (2_tdd_implementation):
+Phase 2 (2_ddd_implementation):
 
-- Agent: manager-tdd
-- Output: Code with passing tests (at least 85% coverage)
+- Agent: manager-ddd
+- Output: Refactored code with behavior preservation (at least 85% coverage)
 - Checkpoint: Implementation complete
 
 Phase 2.5 (2_5_quality_validation):
@@ -104,28 +107,16 @@ Phase 4 (4_completion_guidance):
 - Output: Summary and next steps options
 - Checkpoint: User directed to /moai:3-sync
 
-### Tool Usage Discipline [HARD]
+### Tool Usage Guidelines
 
-This command **MUST** only use these three tool categories:
+This command has access to all tools for flexibility:
 
-- **Task()**: Delegates to specialized agents (manager-strategy, manager-tdd, manager-quality, manager-git)
-  - WHY: Maintains architectural clarity and separation of concerns
-  - IMPACT: Ensures each phase remains focused and reusable
+- Task() for agent orchestration (recommended for complex tasks)
+- AskUserQuestion() for user interaction at command level
+- TodoWrite() for tracking task progress across phases
+- Read, Write, Edit, Bash, Glob, Grep for direct operations when needed
 
-- **AskUserQuestion()**: Obtains user approval and next steps guidance AT COMMAND LEVEL ONLY
-  - WHY: Subagents via Task() are stateless and cannot interact with users
-  - IMPACT: Expecting agents to use AskUserQuestion causes workflow failures
-  - CORRECT: Command collects approvals, passes decisions to agents as parameters
-
-- **TodoWrite()**: Tracks task progress across phases
-  - WHY: Maintains visibility into long-running implementation workflows
-  - IMPACT: Enables recovery and debugging if phases fail
-
-- **Agents handle all direct tool usage** (Read, Write, Edit, Bash, Grep, Glob)
-  - WHY: Command stays lightweight; agents bring domain expertise
-  - IMPACT: Reduces command complexity by 71% while improving reliability
-
-The command orchestrates phases sequentially; specialized agents handle all implementation complexity.
+Agent delegation is recommended for complex tasks that benefit from specialized expertise. Direct tool usage is permitted when appropriate for simpler operations.
 
 ---
 
@@ -137,13 +128,14 @@ The command orchestrates phases sequentially; specialized agents handle all impl
   - Input: SPEC ID and content
   - Output: Execution strategy with phased approach and success criteria
 
-- **manager-tdd**: Implements code through RED-GREEN-REFACTOR cycle
+- **manager-ddd**: Implements code through ANALYZE-PRESERVE-IMPROVE cycle
   - Input: Approved execution plan from Phase 1
-  - Output: Code with passing tests (≥85% coverage)
+  - Output: Refactored code with identical behavior and improved structure (≥85% coverage)
 
 - **manager-quality**: Validates TRUST 5 principles and quality gates
   - Input: Implemented code and test suite
   - Output: Quality assessment (PASS/WARNING/CRITICAL)
+  - Note: Validates behavior preservation and structural improvements
 
 - **manager-git**: Creates feature branch and commits with meaningful messages
   - Input: Implementation context and changes
@@ -152,6 +144,13 @@ The command orchestrates phases sequentially; specialized agents handle all impl
 ---
 
 ## Agent Invocation Patterns (CLAUDE.md Compliance)
+
+[HARD] AGENT DELEGATION MANDATE:
+
+- ALL implementation tasks MUST be delegated to specialized agents (manager-strategy, manager-ddd, manager-quality, manager-git)
+- NEVER execute implementation directly, even after auto compact
+- WHY: Specialized agents have domain expertise for DDD methodology, quality validation, and Git operations
+- This rule applies regardless of session state or context recovery
 
 This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
 
@@ -162,33 +161,36 @@ Command implements strict sequential chaining through 5 phases:
 Phase Flow:
 
 - Phase 1: Analysis & Planning (manager-strategy subagent)
-- Phase 2: TDD Implementation (manager-tdd subagent with RED-GREEN-REFACTOR)
+- Phase 2: DDD Implementation (manager-ddd subagent with ANALYZE-PRESERVE-IMPROVE)
 - Phase 2.5: Quality Validation (manager-quality subagent with TRUST 5 assessment)
 - Phase 3: Git Operations (manager-git subagent for commits and branch)
 - Phase 4: Completion Guidance (AskUserQuestion for next steps)
 
 Each phase receives outputs from all previous phases as context.
 
-WHY: Sequential execution ensures TDD discipline and quality gates
+WHY: Sequential execution ensures methodology discipline and quality gates
 
 - Phase 2 requires approved execution plan from Phase 1
 - Phase 2.5 validates Phase 2 implementation before git operations
+  - Validates behavior preservation and structural improvements
 - Phase 3 requires validated code from Phase 2.5
 - Phase 4 provides guidance based on complete implementation status
 
-IMPACT: Skipping phases or parallel execution would violate TDD cycle and bypass quality gates
+IMPACT: Skipping phases or parallel execution would violate DDD cycle and bypass quality gates
 
 ### Parallel Execution FAIL
 
-Not applicable - TDD workflow requires sequential execution
+Not applicable - DDD workflows require sequential execution
 
-WHY: Test-Driven Development mandates specific ordering
+WHY: DDD methodology mandates specific ordering
 
-- Cannot write tests in parallel with implementation (RED phase first)
-- Cannot validate quality before implementation completes
-- Cannot commit code before quality validation passes
+DDD (ANALYZE-PRESERVE-IMPROVE):
 
-IMPACT: Parallel execution would break TDD discipline and compromise code quality
+- Cannot preserve without analyzing first
+- Cannot improve without establishing safety net
+- Cannot commit without verifying behavior preservation
+
+IMPACT: Parallel execution would break methodology discipline and compromise code quality
 
 ### Resumable Agent Support PASS
 
@@ -215,6 +217,10 @@ Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern
 
 **Agent**: manager-strategy
 
+[SOFT] Apply --ultrathink keyword for comprehensive requirement analysis
+WHY: Implementation planning requires deep analysis of SPEC requirements, success criteria, and architectural impact
+IMPACT: Sequential thinking ensures thorough understanding before expensive implementation begins
+
 **Requirements** [HARD]:
 
 - Read and fully analyze SPEC document at the provided ID
@@ -222,7 +228,7 @@ Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern
   - IMPACT: Prevents incomplete or incorrect implementations
 
 - Create detailed execution strategy with phased approach
-  - WHY: Provides clear roadmap for TDD implementation
+  - WHY: Provides clear roadmap for DDD implementation
   - IMPACT: Improves communication and enables early risk detection
 
 - Identify success criteria and acceptance tests
@@ -273,7 +279,7 @@ IMPACT: Clear task boundaries enable focused, reviewable changes and better prog
 
 Task Granularity:
 
-- Each task should be completable in a single TDD cycle (RED-GREEN-REFACTOR)
+- Each task should be completable in a single DDD cycle (ANALYZE-PRESERVE-IMPROVE)
 - Tasks should produce testable, committable units of work
 - Maximum 10 tasks per SPEC (split SPEC if more needed)
 
@@ -296,34 +302,38 @@ Expected Output:
   - acceptance: Verification criteria (for example, POST /api/users returns 201 with user data)
 - coverage_verified: true
 
-### Phase 2: TDD Implementation
+### Phase 2: DDD Implementation
 
-**Agent**: manager-tdd
+**Agent**: manager-ddd
 
 **Requirements** [HARD]:
 
-- Initialize TodoWrite for task tracking across implementation
-  - WHY: Maintains visible progress through multi-step TDD cycle
-  - IMPACT: Enables recovery if implementation is interrupted
+- Initialize TodoWrite for task tracking across refactoring
+  - WHY: Maintains visible progress through multi-step DDD cycle
+  - IMPACT: Enables recovery if refactoring is interrupted
 
-- Execute complete RED → GREEN → REFACTOR cycle
-  - WHY: Ensures code quality and test-first discipline
-  - IMPACT: Reduces bugs by 40% compared to code-first approach
+- Execute complete ANALYZE → PRESERVE → IMPROVE cycle
+  - ANALYZE: Identify domain boundaries, coupling metrics, refactoring targets
+  - PRESERVE: Verify existing tests, create characterization tests for safety net
+  - IMPROVE: Apply incremental transformations with continuous verification
+  - WHY: Ensures behavior preservation during structural changes
+  - IMPACT: Reduces risk of introducing regressions
 
-- Ensure test coverage meets or exceeds 85%
-  - WHY: Provides confidence in feature reliability
-  - IMPACT: Reduces defect escape rate to production
+- Verify all existing tests pass after each transformation
+  - WHY: Behavior preservation is the golden rule of DDD
+  - IMPACT: Immediate detection of unintended behavior changes
 
-- Verify all tests pass before completion
-  - WHY: Prevents incomplete implementations from advancing
-  - IMPACT: Ensures Phase 3 commits have known good state
+- Create characterization tests for uncovered code paths
+  - WHY: Establishes safety net before making changes
+  - IMPACT: Captures current behavior as baseline for verification
 
 Expected Output:
 
-- files_created: List of implementation files
-- tests_created: List of test files
-- test_results: All passing (count)
-- coverage_percentage: 85% or higher coverage
+- files_modified: List of refactored files
+- characterization_tests_created: List of new characterization tests
+- test_results: All passing (existing + characterization)
+- behavior_preserved: true
+- structural_metrics: Before/after coupling and cohesion comparison
 
 ### Phase 2.5: Quality Validation
 
@@ -351,6 +361,17 @@ Expected Output:
 - Verify test coverage is at least 85%
   - WHY: Ensures critical paths are tested
   - IMPACT: Confidence that feature works under expected conditions
+
+- **Behavior Preservation Validation**:
+  - Verify behavior preservation: All existing tests must pass unchanged
+    - WHY: Core DDD principle - no functional changes during refactoring
+    - IMPACT: Ensures refactoring didn't introduce regressions
+  - Verify characterization tests pass: Behavior snapshots must match
+    - WHY: Confirms current behavior is preserved
+    - IMPACT: Detects subtle behavioral changes
+  - Verify structural improvement: Coupling/cohesion metrics improved
+    - WHY: Refactoring should result in better code structure
+    - IMPACT: Validates that refactoring achieved its goals
 
 - Return clear assessment status (PASS/WARNING/CRITICAL)
   - WHY: Explicit signal for Phase 3 decision point
@@ -461,11 +482,11 @@ PHASE 1: manager-strategy subagent
 - Checkpoint: User approval required (proceed/modify/postpone)
 - Decision: If "proceed" then continue to Phase 2, else exit
 
-PHASE 2: manager-tdd subagent (upon approval)
+PHASE 2: manager-ddd subagent (upon approval)
 
-- Action: RED-GREEN-REFACTOR then Write tests then Implement code then Verify coverage
-- Output: Implementation files with passing tests (85% or higher)
-- Checkpoint: All tests pass with sufficient coverage
+- Action: ANALYZE-PRESERVE-IMPROVE then Create characterization tests then Refactor code then Verify behavior
+- Output: Refactored files with behavior preservation (85% or higher coverage)
+- Checkpoint: All tests pass with behavior preserved
 - Decision: Proceed to Phase 2.5
 
 PHASE 2.5: manager-quality subagent
@@ -522,18 +543,18 @@ User Approval Checkpoint (HARD requirement):
   - "Postpone" - Stop here and continue later
 - If user does not select "Proceed with plan": Exit execution and await further instructions
 
-**Phase 2: TDD Implementation**
+**Phase 2: DDD Implementation**
 
 Phase 2 Execution Steps:
 
-- Invoke the manager-tdd subagent with context from Phase 1 plan result
-- The subagent executes complete TDD implementation for the approved plan:
-  - Write failing tests first (RED phase)
-  - Implement minimal code to pass tests (GREEN phase)
-  - Refactor for quality improvements (REFACTOR phase)
+- Invoke the manager-ddd subagent with context from Phase 1 plan result
+- The subagent executes complete DDD implementation for the approved plan:
+  - Analyze existing code structure and identify refactoring targets (ANALYZE phase)
+  - Create characterization tests to establish safety net (PRESERVE phase)
+  - Apply incremental transformations with continuous verification (IMPROVE phase)
   - Ensure test coverage meets or exceeds 85%
-  - Verify all tests are passing
-- The subagent returns implementation files with passing test suite and coverage metrics
+  - Verify all tests are passing and behavior is preserved
+- The subagent returns refactored files with characterization tests and behavior verification
 
 **Phase 2.5: Quality Validation**
 
@@ -681,8 +702,8 @@ After implementation, verify all items below to ensure compliance with Claude 4 
   - WHY: Ensures user verification before expensive implementation
   - IMPACT: Prevents wrong implementations from advancing
 
-- [ ] Phase 2: manager-tdd executes with planning context from Phase 1
-  - Verify: Tests pass, coverage >= 85%, implementation files created
+- [ ] Phase 2: manager-ddd executes with planning context from Phase 1
+  - Verify: Tests pass, coverage >= 85%, behavior preserved, structural improvements
 
 - [ ] Phase 2.5: manager-quality executes with both planning and implementation context
   - Verify: TRUST 5 validation complete, status is PASS/WARNING/CRITICAL
@@ -713,7 +734,7 @@ After implementation, verify all items below to ensure compliance with Claude 4 
 **Common Scenarios**:
 
 - **Implement new SPEC feature**: `/moai:2-run SPEC-XXX`
-  - Flows through: Phase 1 (Plan) then Phase 2 (TDD) then Phase 2.5 (Quality) then Phase 3 (Git) then Phase 4 (Guidance)
+  - Flows through: Phase 1 (Plan) then Phase 2 (DDD) then Phase 2.5 (Quality) then Phase 3 (Git) then Phase 4 (Guidance)
   - Expected outcome: Feature implemented with 85% or higher test coverage and commits created
 
 - **Resume after interruption**: `/moai:2-run SPEC-XXX` (retry same command)
@@ -732,9 +753,9 @@ After implementation, verify all items below to ensure compliance with Claude 4 
   - Input: SPEC ID and content
   - Output: Execution strategy with phased approach
 
-- `manager-tdd`: Implements features through TDD cycle
+- `manager-ddd`: Implements features through DDD cycle
   - Input: Approved execution plan
-  - Output: Code with passing tests (≥85% coverage)
+  - Output: Refactored code with behavior preservation (≥85% coverage)
 
 - `manager-quality`: Validates TRUST 5 principles
   - Input: Implementation and plan
@@ -747,19 +768,19 @@ After implementation, verify all items below to ensure compliance with Claude 4 
 **Implementation Results**:
 
 - **Code**: Feature implementation files matching approved plan
-- **Tests**: Test suite with ≥85% coverage (RED-GREEN-REFACTOR)
+- **Tests**: Test suite with ≥85% coverage (ANALYZE-PRESERVE-IMPROVE)
 - **Commits**: Git feature branch with conventional commit messages
 - **Quality**: PASS/WARNING/CRITICAL assessment with TRUST 5 validation
 
 **Metadata**:
 
-Version: 4.1.0 (SDD 2025 Standard Integration)
-Updated: 2025-12-19
+Version: 5.0.0 (DDD Only)
+Updated: 2026-01-17
 Pattern: Sequential Phase-Based Agent Delegation with Context Propagation
 Compliance: Claude 4 Best Practices + SDD 2025 Standard + [HARD]/[SOFT] Classification
 Architecture: Commands → Agents → Skills (Complete delegation with no direct tool usage)
 Output Format: XML tags for phase boundaries and structured data
-New Features: Phase 1.5 Tasks Decomposition (GitHub Spec Kit pattern)
+Methodology: DDD (Domain-Driven Development) with ANALYZE-PRESERVE-IMPROVE cycle
 
 ---
 

@@ -23,6 +23,28 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords:
+    - UI/UX
+    - design system
+    - accessibility
+    - WCAG
+    - ARIA
+    - icon
+    - theming
+    - dark mode
+    - design tokens
+    - component library
+    - Radix UI
+    - shadcn
+    - Storybook
+    - Figma
+    - design tokens
+    - Style Dictionary
+    - Lucide
+    - Iconify
+    - responsive design
+    - user experience
 ---
 
 ## Quick Reference
@@ -52,6 +74,7 @@ Module Organization:
 - Accessibility: modules/accessibility-wcag.md (WCAG 2.2 compliance, testing, navigation)
 - Icons: modules/icon-libraries.md (10+ libraries, selection guide, performance optimization)
 - Theming: modules/theming-system.md (theme system, CSS variables, brand customization)
+- Web Interface Guidelines: modules/web-interface-guidelines.md (Vercel Labs comprehensive UI/UX compliance)
 - Examples: examples.md (practical implementation examples)
 - Reference: reference.md (external documentation links)
 
@@ -200,7 +223,7 @@ Agents:
 
 Commands:
 
-- /moai:2-run - TDD implementation cycle
+- /moai:2-run - DDD implementation cycle
 - /moai:3-sync - Documentation generation
 
 ---
@@ -226,6 +249,7 @@ Official Resources:
 - Style Dictionary: https://styledictionary.com
 - Lucide Icons: https://lucide.dev
 - Iconify: https://iconify.design
+- Vercel Web Interface Guidelines: https://github.com/vercel-labs/web-interface-guidelines
 
 ---
 

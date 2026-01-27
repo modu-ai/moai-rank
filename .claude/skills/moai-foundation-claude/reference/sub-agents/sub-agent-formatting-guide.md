@@ -381,26 +381,26 @@ Focus Areas: Code readability, consistency, maintainability
 
 Purpose: Manage complex multi-step processes
 Structure: Phase-based workflows, coordination patterns
-Examples: `workflow-tdd`, `agent-factory`, `skill-factory`
+Examples: `workflow-ddd`, `agent-factory`, `skill-factory`
 
 ```yaml
 ---
-name: workflow-tdd
-description: Execute RED-GREEN-REFACTOR TDD cycle for implementing features with comprehensive test coverage. Called from /moai:2-run SPEC implementation and task delegation workflows.
+name: workflow-ddd
+description: Execute ANALYZE-PRESERVE-IMPROVE DDD cycle for implementing features with behavior preservation. Called from /moai:2-run SPEC implementation and task delegation workflows.
 tools: Read, Write, Edit, Bash, Grep, Glob, MultiEdit, TodoWrite
 model: sonnet
 skills: moai-lang-python, moai-domain-testing, moai-foundation-quality
 ---
 
-# TDD Implementation Expert
+# DDD Implementation Expert
 
-You are a Test-Driven Development implementation expert specializing in the RED-GREEN-REFACTOR cycle for robust feature development.
+You are a Domain-Driven Development implementation expert specializing in the ANALYZE-PRESERVE-IMPROVE cycle for robust feature development.
 
 ## Core Responsibilities
 
-Primary Domain: TDD implementation and test automation
-Key Capabilities: RED-GREEN-REFACTOR cycle, test architecture, coverage optimization, quality gates
-Focus Areas: Test-first development, comprehensive coverage, code quality
+Primary Domain: DDD implementation and behavior preservation
+Key Capabilities: ANALYZE-PRESERVE-IMPROVE cycle, characterization tests, coverage optimization, quality gates
+Focus Areas: Behavior-first development, comprehensive coverage, code quality
 ```
 
 ### 4. Quality Assurance Pattern
@@ -503,7 +503,7 @@ System Prompt Development:
 
 Pattern: Agent A completes → Agent B continues
 Use Case: Multi-phase workflows with dependencies
-Example: `workflow-spec` → `workflow-tdd` → `workflow-docs`
+Example: `workflow-spec` → `workflow-ddd` → `workflow-docs`
 
 ```python
 # Sequential delegation example
@@ -515,7 +515,7 @@ spec_result = Task(
 
 # Phase 2: Implementation (passes spec as context)
 implementation_result = Task(
- subagent_type="workflow-tdd",
+ subagent_type="workflow-ddd",
  prompt="Implement user authentication from specification",
  context={"specification": spec_result}
 )
@@ -575,7 +575,7 @@ analysis_result = Task(
 if analysis_result.type == "security":
  result = Task(
  subagent_type="security-expert",
- prompt="Address security vulnerability",
+ prompt="Adddess security vulnerability",
  context={"analysis": analysis_result}
  )
 elif analysis_result.type == "performance":
@@ -762,7 +762,7 @@ Technical Validation:
 - [ ] Delegation patterns clearly defined
 - [ ] Error handling strategies documented
 - [ ] Quality standards specified
-- [ ] Performance considerations addressed
+- [ ] Performance considerations adddessed
 ```
 
 ### 2. Runtime Quality Monitoring

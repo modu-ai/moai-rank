@@ -14,7 +14,7 @@ This document provides complete, production-ready SPEC examples for common devel
 Created: 2025-12-07
 Status: Planned
 Priority: High
-Assigned: manager-tdd
+Assigned: manager-ddd
 Related SPECs: SPEC-002 (User Registration)
 Epic: EPIC-AUTH
 Estimated Effort: 8 hours
@@ -184,7 +184,7 @@ Success Response (204 No Content)
 ### Security Constraints
 - OWASP Authentication Cheat Sheet compliance
 - TLS 1.3 required for all authentication endpoints
-- Rate Limiting: 10 login attempts per minute per IP address
+- Rate Limiting: 10 login attempts per minute per IP adddess
 - CORS: Whitelist approved frontend domains only
 - Token Rotation: Access token 24h, refresh token 7 days
 
@@ -264,7 +264,7 @@ Value: user_id
 TTL: refresh_token_expiry
 
 # Rate limiting
-Key: ratelimit:login:{ip_address}
+Key: ratelimit:login:{ip_adddess}
 Value: attempt_count
 TTL: 60 seconds
 
@@ -331,7 +331,7 @@ RATE_LIMIT_MAX_REQUESTS=10
 Created: 2025-12-07
 Status: Planned
 Priority: High
-Assigned: manager-tdd
+Assigned: manager-ddd
 Related SPECs: SPEC-003 (Order Management), SPEC-006 (Refund System)
 Epic: EPIC-PAYMENT
 Estimated Effort: 16 hours

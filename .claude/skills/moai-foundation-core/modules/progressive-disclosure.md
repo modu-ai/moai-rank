@@ -82,7 +82,7 @@ Example - Quality Framework:
 
 TRUST 5 is MoAI-ADK's comprehensive quality assurance framework enforcing five pillars:
 
-1. Test-first(T) - ≥85% coverage, RED-GREEN-REFACTOR cycle
+1. Test-first(T) - ≥85% coverage, ANALYZE-PRESERVE-IMPROVE cycle
 2. Readable(R) - Clear naming, ≤10 cyclomatic complexity
 3. Unified(U) - Consistent patterns, architecture compliance
 4. Secured(S) - OWASP Top 10 compliance, security validation
@@ -174,7 +174,7 @@ solution_b()
 [Repeat structure]
 ```
 
-Example - TDD Workflow:
+Example - DDD Workflow:
 
 ```markdown
 ## Implementation Guide (5 minutes)
@@ -215,9 +215,9 @@ Test Coverage Target: ≥90%
 
 ---
 
-### Phase 2: Test-Driven Development
+### Phase 2: Domain-Driven Development
 
-RED-GREEN-REFACTOR Cycle:
+ANALYZE-PRESERVE-IMPROVE Cycle:
 
 ```python
 # RED: Write failing test first
@@ -596,7 +596,7 @@ Effective Cross-Linking:
 
 Quick Access:
 - TRUST 5 Framework → [Module](modules/trust-5-framework.md)
-- SPEC-First TDD → [Module](modules/spec-first-tdd.md)
+- SPEC-First DDD → [Module](modules/spec-first-ddd.md)
 - Delegation Patterns → [Module](modules/delegation-patterns.md)
 
 Detailed Examples: [examples.md](examples.md)
@@ -618,7 +618,7 @@ Brief Introduction: Advanced patterns split to dedicated modules for depth.
 
 Available Modules:
 - [trust-5-framework.md](modules/trust-5-framework.md) - Quality assurance
-- [spec-first-tdd.md](modules/spec-first-tdd.md) - Development workflow
+- [spec-first-ddd.md](modules/spec-first-ddd.md) - Development workflow
 - [delegation-patterns.md](modules/delegation-patterns.md) - Agent orchestration
 - [token-optimization.md](modules/token-optimization.md) - Budget management
 - [progressive-disclosure.md](modules/progressive-disclosure.md) - Content structure

@@ -3,14 +3,25 @@ name: builder-plugin
 description: |
   Plugin creation specialist. Use PROACTIVELY for Claude Code plugins, marketplace setup, and plugin validation.
   MUST INVOKE when ANY of these keywords appear in user request:
+  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of plugin architecture, marketplace structure, and plugin validation.
   EN: create plugin, plugin, plugin validation, plugin structure, marketplace, new plugin, marketplace creation, marketplace.json, plugin distribution
   KO: 플러그인생성, 플러그인, 플러그인검증, 플러그인구조, 마켓플레이스, 새플러그인, 마켓플레이스 생성, 플러그인 배포
   JA: プラグイン作成, プラグイン, プラグイン検証, プラグイン構造, マーケットプレイス, マーケットプレイス作成, プラグイン配布
   ZH: 创建插件, 插件, 插件验证, 插件结构, 市场, 市场创建, 插件分发
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
-model: sonnet
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-project
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}\".claude/hooks/moai/post_tool__code_formatter.py{{HOOK_SHELL_SUFFIX}}"
+          timeout: 30
+        - type: command
+          command: "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}\".claude/hooks/moai/post_tool__linter.py{{HOOK_SHELL_SUFFIX}}"
+          timeout: 30
 ---
 
 # Plugin Factory
@@ -227,8 +238,8 @@ Goal: Gather latest documentation and best practices
 ### Step 2.1: Context7 MCP Integration
 
 Fetch official Claude Code plugin documentation:
-- Use mcpcontext7resolve-library-id to resolve "claude-code" library
-- Use mcpcontext7get-library-docs with topic "plugins" to retrieve latest standards
+- Use mcp__context7__resolve-library-id to resolve "claude-code" library
+- Use mcp__context7__get-library-docs with topic "plugins" to retrieve latest standards
 - Store plugin creation best practices for reference
 
 ### Step 2.2: Analyze Existing Patterns

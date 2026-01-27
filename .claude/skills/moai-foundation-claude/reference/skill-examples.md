@@ -300,18 +300,18 @@ name: moai-python-testing-expert
 description: Comprehensive Python testing expertise covering pytest, unittest, mocking, and test-driven development patterns. Use when writing tests, setting up test infrastructure, or improving test coverage and quality.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 version: 1.1.0
-tags: [python, testing, pytest, tdd, quality]
+tags: [python, testing, pytest, ddd, quality]
 updated: 2025-11-25
 status: active
 ---
 
 # Python Testing Expert
 
-Complete Python testing solution with pytest expertise, mocking strategies, test automation, and TDD patterns for production-ready code quality.
+Complete Python testing solution with pytest expertise, mocking strategies, test automation, and DDD testing patterns for production-ready code quality.
 
 ## Quick Reference (30 seconds)
 
-Design and implement comprehensive Python test suites using pytest, unittest, mocking frameworks, and TDD methodologies for reliable, maintainable code.
+Design and implement comprehensive Python test suites using pytest, unittest, mocking frameworks, and comprehensive testing methodologies for reliable, maintainable code.
 
 ## Implementation Guide
 
@@ -425,7 +425,7 @@ pytest --cov=src --cov-report=html # With coverage report
 ## Works Well With
 
 - [`moai-lang-python`](../moai-lang-python/SKILL.md) - Python language patterns
-- [`moai-tdd-implementer`](../moai-tdd-implementer/SKILL.md) - TDD methodology
+- [`moai-workflow-ddd`](../moai-workflow-ddd/SKILL.md) - DDD methodology
 - [`moai-quality-gate`](../moai-quality-gate/SKILL.md) - Quality validation
 
 ## Advanced Features

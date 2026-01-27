@@ -14,11 +14,11 @@ TRUST 5 Framework:
 - Integration: Pre-commit hooks, CI/CD pipelines, agent workflows
 - Validation: Automated checks with configurable thresholds
 
-SPEC-First TDD:
+SPEC-First DDD:
 - Purpose: Specification-driven development workflow
-- Phases: SPEC (Plan), TDD (Run), Docs (Sync)
+- Phases: SPEC (Plan), DDD (Run), Docs (Sync)
 - Format: EARS (Event-Action-Response-State) specifications
-- Token Budget: 30K (SPEC) + 180K (TDD) + 40K (Docs) = 250K total
+- Token Budget: 30K (SPEC) + 180K (DDD) + 40K (Docs) = 250K total
 
 Delegation Patterns:
 - Purpose: Task orchestration via specialized agents
@@ -94,8 +94,8 @@ token_budget:
       strategy: "minimal_context"
       clear_after: true          # Execute /clear after phase
 
-    tdd:
-      budget: 180000             # 180K for TDD phase
+    ddd:
+      budget: 180000             # 180K for DDD phase
       strategy: "selective_loading"
       file_priority: ["tests", "src", "config"]
 
@@ -182,14 +182,14 @@ def pre_commit_validation(staged_files: List[str]) -> bool:
     return all_passed
 ```
 
-### Pattern 2: SPEC-First TDD Workflow
+### Pattern 2: SPEC-First DDD Workflow
 
 ```python
-# Complete SPEC-First TDD cycle implementation
-from moai_foundation_core import SPECManager, TDDExecutor, DocsGenerator
+# Complete SPEC-First DDD cycle implementation
+from moai_foundation_core import SPECManager, DDDExecutor, DocsGenerator
 
 async def spec_first_workflow(requirements: str):
-    """Execute complete SPEC-First TDD workflow."""
+    """Execute complete SPEC-First DDD workflow."""
 
     # Phase 1: SPEC Generation (30K tokens)
     spec_manager = SPECManager()
@@ -202,23 +202,23 @@ async def spec_first_workflow(requirements: str):
     # Critical: Clear context before Phase 2
     await execute_clear()  # Saves 45-50K tokens
 
-    # Phase 2: TDD Implementation (180K tokens)
-    tdd = TDDExecutor(spec.id)
+    # Phase 2: DDD Implementation (180K tokens)
+    ddd = DDDExecutor(spec.id)
 
-    # RED: Create failing tests
-    tests = await tdd.generate_tests()
-    assert await tdd.run_tests() == "FAIL"
+    # ANALYZE: Understand requirements and existing behavior
+    analysis = await ddd.analyze()
+    assert analysis.requirements_complete == True
 
-    # GREEN: Implement to pass
-    implementation = await tdd.implement()
-    assert await tdd.run_tests() == "PASS"
+    # PRESERVE: Ensure existing behavior is protected
+    characterization = await ddd.preserve()
+    assert await ddd.run_tests() == "PASS"
 
-    # REFACTOR: Optimize
-    refactored = await tdd.refactor()
-    assert await tdd.run_tests() == "PASS"
+    # IMPROVE: Implement improvements incrementally
+    improved = await ddd.improve()
+    assert await ddd.run_tests() == "PASS"
 
     # Validate coverage
-    coverage = await tdd.get_coverage()
+    coverage = await ddd.get_coverage()
     assert coverage >= 0.85
 
     # Phase 3: Documentation (40K tokens)
@@ -407,12 +407,12 @@ diagnose.verify_module_structure()
 
 - MoAI-ADK Documentation: See project README
 - Claude Code Skills Guide: https://docs.anthropic.com/claude-code/skills
-- EARS Specification Format: See `modules/spec-first-tdd.md`
+- EARS Specification Format: See `modules/spec-first-ddd.md`
 
 ### Module References
 
 - TRUST 5 Framework: `modules/trust-5-framework.md`
-- SPEC-First TDD: `modules/spec-first-tdd.md`
+- SPEC-First DDD: `modules/spec-first-ddd.md`
 - Delegation Patterns: `modules/delegation-patterns.md`
 - Token Optimization: `modules/token-optimization.md`
 - Progressive Disclosure: `modules/progressive-disclosure.md`

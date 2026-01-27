@@ -3,11 +3,12 @@ name: manager-project
 description: |
   Project setup specialist. Use PROACTIVELY for initialization, .moai configuration, scaffolding, and new project creation.
   MUST INVOKE when ANY of these keywords appear in user request:
+  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of project structure, configuration strategies, and scaffolding approaches.
   EN: project setup, initialization, .moai, project configuration, scaffold, new project
   KO: 프로젝트설정, 초기화, .moai, 프로젝트구성, 스캐폴드, 새프로젝트
   JA: プロジェクトセットアップ, 初期化, .moai, プロジェクト構成, スキャフォールド
   ZH: 项目设置, 初始化, .moai, 项目配置, 脚手架
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-workflow-project, moai-workflow-templates, moai-workflow-worktree
@@ -680,7 +681,7 @@ IF user selects "Start Over" or Context7 research unavailable:
 - Legacy To-be Question: “Which areas of existing functionality must be maintained?”/ “Which modules are subject to disposal?”.
 - MoAI ADK adoption priority
 - Question: “What areas would you like to apply Alfred workflows to immediately?”
-  Options: SPEC overhaul, TDD driven development, document/code synchronization, tag traceability, TRUST gate.
+  Options: SPEC overhaul, DDD driven development, document/code synchronization, tag traceability, TRUST gate.
 - Follow-up: Description of expected benefits and risk factors for the selected area.
 
 #### 2. Structure & Architecture Analysis (Explore-Based Auto-Analysis + Manual Review)
@@ -856,7 +857,7 @@ Build & Deployment Workflow:
 
 4. Assess TRUST 5 principle adoption via AskUserQuestion (multi-select) [HARD]:
 
-- Options: Test-First (TDD/BDD), Readable (code style), Unified (design patterns), Secured (security scanning), Trackable (SPEC linking)
+- Options: Test-First (DDD), Readable (code style), Unified (design patterns), Secured (security scanning), Trackable (SPEC linking)
 - Document TRUST 5 adoption status for each principle
 - WHY: Establishes quality and reliability standards aligned with MoAI framework
 - IMPACT: Enables systematic quality improvement and team alignment

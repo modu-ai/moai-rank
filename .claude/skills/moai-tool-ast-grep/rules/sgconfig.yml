@@ -7,7 +7,8 @@ ruleDirs:
   - languages
 
 testConfigs:
-  - ./**/__tests__/*.yml
+  - testDir: "__tests__"
+    snapshotDir: "__snapshots__"
 
 languageGlobs:
   python:
@@ -43,12 +44,6 @@ languageGlobs:
   php:
     - "**/*.php"
 
-# Custom rules utilities
-utils:
-  is-security-sensitive:
-    any:
-      - pattern: password
-      - pattern: secret
-      - pattern: api_key
-      - pattern: token
-      - pattern: credential
+# Custom rules utilities (directory-based)
+# utilDirs:
+#   - utils

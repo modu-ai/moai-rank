@@ -174,7 +174,7 @@ async def test_async_api_call():
 
 - moai-lang-python - Python 3.13+ patterns
 - moai-domain-backend - Backend testing strategies
-- moai-workflow-tdd - TDD workflow integration
+- moai-workflow-ddd - DDD workflow integration
 ```
 
 **Explanation**: This skill follows Claude Code official standards with progressive disclosure (Quick/Implementation/Advanced), stays under 500 lines, and includes practical pytest examples.
@@ -223,19 +223,19 @@ analysis = Task(
     }
 )
 
-# Phase 2: Implementation with tdd-implementer (depends on analysis)
+# Phase 2: Implementation with ddd-implementer (depends on analysis)
 implementation = Task(
-    subagent_type="tdd-implementer",
+    subagent_type="ddd-implementer",
     prompt=f"""
-    Implement the SPEC using TDD approach:
+    Implement the SPEC using DDD approach:
 
     SPEC ID: {analysis.spec_id}
     Requirements: {analysis.requirements}
 
-    Follow RED-GREEN-REFACTOR cycle:
-    1. Write failing tests first
-    2. Implement minimum code to pass
-    3. Refactor for quality
+    Follow ANALYZE-PRESERVE-IMPROVE cycle:
+    1. Analyze existing structure and behavior
+    2. Preserve behavior with characterization tests
+    3. Improve structure incrementally
     """,
     context={
         "spec_id": analysis.spec_id,
@@ -672,9 +672,9 @@ plan_result = Task(
 # Step 2: Clear context (after plan)
 # /clear
 
-# Step 3: Run - Implement with TDD
+# Step 3: Run - Implement with DDD
 run_result = Task(
-    subagent_type="tdd-implementer",
+    subagent_type="ddd-implementer",
     prompt=f"Implement SPEC: {plan_result.spec_id}",
     context={"spec": plan_result}
 )

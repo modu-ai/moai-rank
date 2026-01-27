@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
-import { currentUser } from '@clerk/nextjs/server';
+import { currentUser, auth } from '@clerk/nextjs/server';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/routing';
@@ -9,6 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { ApiKeyCard, PrivacyToggle } from '@/components/dashboard';
+import { db, users, rankings } from '@/db';
+import { withRLS } from '@/db/rls';
+import { eq, and, desc } from 'drizzle-orm';
+import { generateApiKey } from '@/lib/auth';
+import { randomBytes } from 'node:crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,29 +33,86 @@ interface CurrentUserInfo {
   updatedAt: string;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-}
-
-async function getUserInfo(): Promise<ApiResponse<CurrentUserInfo>> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
+/**
+ * Get user info directly from DB (server-side only)
+ * This avoids the need for internal API calls from server components
+ */
+async function getUserInfo(): Promise<CurrentUserInfo | null> {
   try {
-    const { cookies } = await import('next/headers');
-    const cookieStore = await cookies();
+    const { userId: clerkId } = await auth();
 
-    const response = await fetch(`${baseUrl}/api/me`, {
-      cache: 'no-store',
-      headers: {
-        Cookie: cookieStore.toString(),
-      },
+    if (!clerkId) {
+      return null;
+    }
+
+    // Find user by Clerk ID
+    const userResult = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
+
+    let user = userResult[0];
+
+    // Auto-create user if not found
+    if (!user) {
+      const clerkUser = await currentUser();
+
+      if (!clerkUser) {
+        return null;
+      }
+
+      // Get GitHub info from external accounts
+      const githubAccount = clerkUser.externalAccounts?.find(
+        (account) => account.provider === 'oauth_github'
+      );
+
+      const githubUsername = githubAccount?.username || clerkUser.username || `user_${randomBytes(4).toString('hex')}`;
+      const githubId = String(githubAccount?.externalId || clerkId);
+      const githubAvatarUrl = githubAccount?.imageUrl || clerkUser.imageUrl || null;
+
+      // Generate API key for new user
+      const { hash, prefix } = generateApiKey(clerkId);
+
+      // Create new user
+      const newUserResult = await db
+        .insert(users)
+        .values({
+          clerkId,
+          githubId,
+          githubUsername,
+          githubAvatarUrl,
+          apiKeyHash: hash,
+          apiKeyPrefix: prefix,
+          userSalt: randomBytes(32).toString('hex'),
+          privacyMode: false,
+        })
+        .returning();
+
+      user = newUserResult[0];
+    }
+
+    // Use RLS context for ranking query
+    const currentRank = await withRLS(user.id, async (rlsDb) => {
+      const rankingResult = await rlsDb
+        .select({ rank: rankings.rankPosition })
+        .from(rankings)
+        .where(and(eq(rankings.userId, user.id), eq(rankings.periodType, 'all_time')))
+        .orderBy(desc(rankings.updatedAt))
+        .limit(1);
+
+      return rankingResult[0]?.rank ?? null;
     });
 
-    if (!response.ok) return { success: false };
-    return response.json();
-  } catch {
-    return { success: false };
+    return {
+      id: user.id,
+      githubUsername: user.githubUsername,
+      githubAvatarUrl: user.githubAvatarUrl,
+      apiKeyPrefix: user.apiKeyPrefix,
+      privacyMode: user.privacyMode ?? false,
+      currentRank,
+      createdAt: user.createdAt?.toISOString() ?? new Date().toISOString(),
+      updatedAt: user.updatedAt?.toISOString() ?? new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('[Settings] Failed to get user info:', error);
+    return null;
   }
 }
 
@@ -80,9 +142,9 @@ function SettingsSkeleton() {
 
 async function SettingsContent() {
   const t = await getTranslations('settings');
-  const userInfoResult = await getUserInfo();
+  const userInfo = await getUserInfo();
 
-  if (!userInfoResult.success || !userInfoResult.data) {
+  if (!userInfo) {
     return (
       <div className="rounded-lg border bg-card p-8 text-center">
         <h3 className="text-lg font-semibold">{t('unableToLoad')}</h3>
@@ -90,8 +152,6 @@ async function SettingsContent() {
       </div>
     );
   }
-
-  const userInfo = userInfoResult.data;
 
   return (
     <div>

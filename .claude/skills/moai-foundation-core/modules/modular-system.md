@@ -2,8 +2,8 @@
 
 Purpose: Scalable file structure enabling unlimited content depth while maintaining clean, navigable, and maintainable skill architecture.
 
-Version: 1.0.0
-Last Updated: 2025-11-25
+Version: 1.1.0
+Last Updated: 2026-01-21
 
 ---
 
@@ -86,7 +86,7 @@ Example modules/ structure:
 ```
 modules/
  trust-5-framework.md # Quality assurance deep dive
- spec-first-tdd.md # TDD workflow detailed guide
+ spec-first-ddd.md # DDD workflow detailed guide
  delegation-patterns.md # Agent orchestration patterns
  token-optimization.md # Budget management strategies
  progressive-disclosure.md # Content architecture
@@ -311,7 +311,7 @@ Quick overview of TRUST 5 framework.
 Detailed Implementation: [TRUST 5 Module](modules/trust-5-framework.md)
 
 Key principles:
-- Test-first ≥85%
+- Tested ≥85% (characterization tests for legacy, specification tests for new code)
 - Readable code
 - Unified patterns
 - Secured (OWASP)
@@ -325,7 +325,7 @@ Pattern 2: Section Anchors:
 <!-- In SKILL.md -->
 Quick Access:
 - Quality framework → [TRUST 5](modules/trust-5-framework.md#quick-reference)
-- TDD workflow → [SPEC-First](modules/spec-first-tdd.md#phase-2-test-driven-development)
+- DDD workflow → [SPEC-First](modules/spec-first-ddd.md#phase-2-ddd-implementation)
 - Agent patterns → [Delegation](modules/delegation-patterns.md#pattern-1-sequential-delegation)
 
 <!-- In module -->
@@ -660,6 +660,6 @@ Memory:
 
 ---
 
-Version: 1.0.0
-Last Updated: 2025-11-25
+Version: 1.1.0
+Last Updated: 2026-01-21
 Status: Production Ready

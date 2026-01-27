@@ -4,6 +4,18 @@ description: "R 4.4+ development specialist covering tidyverse, ggplot2, Shiny, 
 version: 1.1.0
 category: "language"
 modularized: true
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["R", "tidyverse", "ggplot2", "Shiny", "dplyr", "data science", ".R", ".Rmd", ".qmd", "DESCRIPTION", "renv.lock"]
+  languages: ["r"]
+
 user-invocable: false
 tags:
   ["language", "r", "tidyverse", "ggplot2", "shiny", "dplyr", "data-science"]
@@ -144,7 +156,7 @@ See:
 
 - moai-lang-python for Python and R interoperability with reticulate
 - moai-domain-database for SQL patterns and database optimization
-- moai-workflow-testing for TDD and testing strategies
+- moai-workflow-testing for DDD and testing strategies
 - moai-essentials-debug for AI-powered debugging
 - moai-foundation-quality for TRUST 5 quality principles
 

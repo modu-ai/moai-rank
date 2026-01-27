@@ -1,8 +1,8 @@
 ---
-description: "Start Ralph-style feedback loop for automated error correction"
-argument-hint: "[--max-iterations N] [--auto-fix]"
+description: "Agentic autonomous loop - Auto-fix until completion marker"
+argument-hint: "[--max N] [--auto] [--seq] | --resume snapshot"
 type: utility
-allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 
@@ -17,245 +17,354 @@ model: inherit
 
 ---
 
-# /moai:loop - Ralph Engine Feedback Loop
+# /moai:loop - Agentic Autonomous Loop
 
-Start an automated feedback loop that continuously checks for errors and guides fixes until all conditions are satisfied.
+## Core Principle: Fully Autonomous Iterative Fixing
+
+AI autonomously finds issues, fixes them, and repeats until completion.
+
+```
+START: Issue Detection
+  ↓
+AI: Fix → Verify → Repeat
+  ↓
+AI: Add Completion Marker
+  ↓
+<moai>DONE</moai>
+```
 
 ## Command Purpose
 
-Implements the Ralph-style "continuous improvement" pattern:
+Autonomously fix LSP errors, test failures, and coverage issues:
 
-1. Check current state (LSP errors, test failures, coverage)
-2. If issues exist, provide guidance to fix them
-3. After each fix, re-check conditions
-4. Repeat until all conditions are met or max iterations reached
+1. **Parallel Diagnostics** (LSP + AST-grep + Tests simultaneously)
+2. **Auto TODO Generation**
+3. **Autonomous Fixing** (Level 1-3)
+4. **Iterative Verification**
+5. **Completion Marker Detection**
 
 Arguments: $ARGUMENTS
 
-## Usage Examples
+## Quick Start
 
-Start basic feedback loop:
-
-```
+```bash
+# Default autonomous loop (parallel diagnostics)
 /moai:loop
-```
 
-With iteration limit:
+# Maximum 50 iterations
+/moai:loop --max 50
 
-```
-/moai:loop --max-iterations 5
-```
+# Sequential diagnostics + auto fix
+/moai:loop --sequential --auto
 
-With auto-fix enabled (applies safe fixes automatically):
-
-```
-/moai:loop --auto-fix
+# Restore from snapshot
+/moai:loop --resume latest
 ```
 
 ## Command Options
 
-- `--max-iterations N`: Override max iterations (default: 10 from ralph.yaml)
-- `--auto-fix`: Enable automatic application of safe fixes
-- `--errors-only`: Only check for errors, ignore warnings
-- `--include-coverage`: Include test coverage in completion conditions
+| Option | Alias | Description | Default |
+|--------|-------|-------------|---------|
+| `--max N` | --max-iterations | Maximum iteration count | 100 |
+| `--auto` | --auto-fix | Enable auto-fix | Level 1 |
+| `--sequential` | --seq | Sequential diagnostics (for debugging) | Parallel |
+| `--errors` | --errors-only | Fix errors only | All |
+| `--coverage` | --include-coverage | Include coverage | 85% |
+| `--resume ID` | --resume-from | Restore from snapshot | - |
 
-## Loop Behavior
+## Completion Promise
 
-### Completion Conditions (from ralph.yaml)
+AI adds a marker when all work is complete:
 
-The loop completes when ALL enabled conditions are met:
+```markdown
+## Loop Complete
 
-1. **zero_errors**: No LSP/compiler errors
-2. **zero_warnings**: No LSP warnings (optional, default: false)
-3. **tests_pass**: All tests pass
-4. **coverage_threshold**: Test coverage meets minimum (default: 85%)
-
-### Loop Iteration Cycle
-
-```
-ITERATION START
-  |
-  v
-CHECK CONDITIONS
-  |-- LSP Diagnostics (errors/warnings)
-  |-- Test Execution (pass/fail)
-  |-- Coverage Report (percentage)
-  |
-  v
-ALL MET? --YES--> COMPLETE
-  |
-  NO
-  |
-  v
-GENERATE GUIDANCE
-  |-- List specific issues
-  |-- Suggest fixes
-  |-- Prioritize by severity
-  |
-  v
-APPLY FIXES (manual or auto)
-  |
-  v
-INCREMENT ITERATION
-  |
-  v
-MAX REACHED? --YES--> STOP (with summary)
-  |
-  NO
-  |
-  v
-ITERATION START (repeat)
+Resolved 5 errors, 3 warnings in 7 iterations. <moai>DONE</moai>
 ```
 
-## Integration with Hooks
+**Marker Types**:
+- `<moai>DONE</moai>` - Task complete
+- `<moai>COMPLETE</moai>` - Full completion
+- `<moai:done />` - XML format
 
-When the loop is active, these hooks provide real-time feedback:
+Without marker, loop continues.
 
-### PostToolUse Hook (post_tool\_\_lsp_diagnostic.py)
+## Autonomous Loop Flow
 
-- Runs after every Write/Edit operation
-- Provides immediate LSP diagnostic feedback
-- Exit code 2 signals errors needing attention
+```
+START: /moai:loop
 
-### Stop Hook (stop\_\_loop_controller.py)
-
-- Runs after each Claude response
-- Checks completion conditions
-- Exit code 1 continues the loop
-- Exit code 0 completes the loop
-
-## Loop State Management
-
-State is persisted in `.moai/cache/.moai_loop_state.json`:
-
-```json
-{
-  "active": true,
-  "iteration": 3,
-  "max_iterations": 10,
-  "last_error_count": 2,
-  "last_warning_count": 5,
-  "files_modified": ["src/auth.py", "tests/test_auth.py"],
-  "start_time": 1704067200.0,
-  "completion_reason": null
-}
+PARALLEL Diagnostics (default)
+  ├── LSP: Errors/Warnings
+  ├── AST-grep: Security
+  ├── Tests: Test results
+  └── Coverage: Coverage metrics
+  ↓
+Integrated Results
+  ↓
+Completion Marker Detected?
+  ├── YES → COMPLETE
+  ↓
+Conditions Met?
+  ├── YES → "Add marker or continue?"
+  ↓
+TODO Generation (immediate)
+  ↓
+Fix Execution (autonomous)
+  ├── Level 1: Immediate fix (import, formatting)
+  ├── Level 2: Safe fix (rename, type)
+  └── Level 3: Approval required (logic, api)
+  ↓
+Verification
+  ↓
+Max reached? → STOP
+  ↓
+Repeat
 ```
 
-## Auto-Fix Capabilities
+## Parallel Diagnostics
 
-When `--auto-fix` is enabled, safe fixes are applied automatically:
+```bash
+# Sequential (--sequential)
+LSP → AST-grep → Tests → Coverage
+Total 30s
 
-### Safe Auto-Fixes (applied without confirmation)
+# Parallel (default)
+LSP ├─┐
+     ├─→ Merge → 8s (3.75x faster)
+AST ├─┤
+    ├─┘
+Tests ┤
+       └─→ 3-4x speed improvement
+Coverage
+```
 
-- Import sorting and organization
-- Whitespace and formatting issues
-- Unused import removal
-- Simple type annotation additions
+### Parallel Diagnostics Implementation
 
-### Unsafe Fixes (require confirmation)
+By default, execute all four diagnostic tools simultaneously each iteration for optimal performance:
 
-- Logic changes
-- API modifications
-- Test modifications
-- Security-related changes
+Step 1 - Launch Background Tasks:
+
+1. LSP Diagnostics: Use Bash tool with run_in_background set to true for language-specific LSP diagnostic command
+2. AST-grep Scan: Use Bash tool with run_in_background set to true for ast-grep with security and quality rules
+3. Test Runner: Use Bash tool with run_in_background set to true for language-specific test framework (pytest, jest, go test)
+4. Coverage Check: Use Bash tool with run_in_background set to true for coverage measurement (coverage.py, c8, go test -cover)
+
+Step 2 - Collect Results:
+
+1. Use TaskOutput tool to collect results from all four background tasks
+2. Wait for all tasks to complete (timeout: 120 seconds per task)
+3. Handle partial failures gracefully - continue with available results
+
+Step 3 - Aggregate Diagnostics:
+
+1. Parse output from each tool into structured diagnostic report
+2. Calculate metrics: error count, warning count, test pass rate, coverage percentage
+3. Detect completion conditions: zero errors AND tests passing AND coverage meets threshold
+
+Step 4 - Completion Check:
+
+1. Check for completion marker in previous iteration response
+2. If marker found: Exit loop with success
+3. If all conditions met and no new issues: Prompt for completion marker or continue
+
+Language-Specific Commands:
+
+Python: pytest --tb=short for tests, coverage run -m pytest for coverage
+TypeScript: npm test or jest for tests, npm run coverage for coverage
+Go: go test ./... for tests, go test -cover ./... for coverage
+Rust: cargo test for tests, cargo tarpaulin for coverage
+
+## TODO-Obsessive Rule
+
+[HARD] TodoWrite Tool Mandatory Usage:
+
+Call TodoWrite tool on every iteration to manage tasks:
+
+1. Immediate Creation: When issues are discovered, call TodoWrite to add items with pending status
+2. Immediate Progress: Before starting work, call TodoWrite to change item to in_progress
+3. Immediate Completion: After completing work, call TodoWrite to change item to completed
+4. Prohibited: Output TODO lists as text (MUST use TodoWrite tool)
+
+WHY: Using TodoWrite tool allows users to track progress in real-time.
+
+## Auto-Fix Levels
+
+| Level | Description | Approval | Examples |
+|-------|-------------|----------|----------|
+| 1 | Immediate fix | Not required | import sort, whitespace |
+| 2 | Safe fix | Log only | rename var, add type |
+| 3 | Approval needed | Required | logic change, API modify |
+| 4 | Manual required | Not allowed | security, architecture |
 
 ## Output Format
 
-### During Loop
+### Running
 
 ```markdown
-## Ralph Loop: Iteration 3/10
+## Loop: 3/100 (parallel)
 
-### Current Status
-
-- Errors: 2
-- Warnings: 5
+### Diagnostics (0.8s)
+- LSP: 2 errors, 5 warnings
+- AST-grep: 0 security issues
 - Tests: 23/25 passing
 - Coverage: 82%
 
-### Issues to Address
+### TODO
+1. [x] src/auth.py:45 - undefined 'jwt_token'
+2. [in_progress] src/auth.py:67 - missing return
+3. [ ] tests/test_auth.py:12 - unused 'result'
 
-1. [ERROR] src/auth.py:45 - undefined name 'jwt_token'
-2. [ERROR] src/auth.py:67 - missing return statement
-3. [WARNING] tests/test_auth.py:12 - unused variable 'result'
-
-### Suggested Actions
-
-1. Import jwt_token or define it locally
-2. Add return statement to validate_token function
-3. Use or remove the 'result' variable
+Fixing...
 ```
 
-### On Completion
+### Complete (Marker Detected)
 
 ```markdown
-## Ralph Loop: COMPLETE
+## Loop: COMPLETE
 
-### Final Status
-
-- Iterations: 4
-- Errors: 0
-- Warnings: 0
+### Summary
+- Iterations: 7
+- Errors fixed: 5
+- Warnings fixed: 3
 - Tests: 25/25 passing
 - Coverage: 87%
 
-### Changes Made
+### Files Modified
+- src/auth.py (7 fixes)
+- tests/test_auth.py (3 fixes)
+- src/api/routes.py (2 fixes)
 
-- Fixed 3 errors
-- Resolved 5 warnings
-- Added 2 test cases
+<moai>DONE</moai>
+```
 
-### Duration
+### Max Iterations Reached
 
-- Start: 10:30:00
-- End: 10:35:42
-- Total: 5m 42s
+```markdown
+## Loop: MAX REACHED (100/100)
+
+### Remaining
+- Errors: 1
+- Warnings: 2
+
+### Options
+1. /moai:loop --max 200  # Continue
+2. /moai:fix             # Single run
+3. Manual fix
+```
+
+## State & Snapshot
+
+```bash
+# State storage
+.moai/cache/.moai_loop_state.json
+
+# Snapshots
+.moai/cache/ralph-snapshots/
+├── iteration-001.json
+├── iteration-002.json
+└── latest.json
+
+# Restore
+/moai:loop --resume iteration-002
+/moai:loop --resume latest
 ```
 
 ## Cancellation
 
-To cancel an active loop:
+Simply send any message to interrupt the loop. The loop state is automatically saved when the session ends via the `session_end` hook.
 
-- Use `/moai:cancel-loop` command
-- Or set environment variable: `MOAI_LOOP_ACTIVE=false`
-- Or delete state file: `.moai/cache/.moai_loop_state.json`
+## Quick Reference
 
-## Best Practices
+```bash
+# Autonomous loop (default parallel)
+/moai:loop
 
-1. **Start Small**: Begin with `--max-iterations 3` for new projects
-2. **Review Auto-Fixes**: Even with `--auto-fix`, review changes before committing
-3. **Use with TDD**: Combine with `/moai:2-run` for test-driven development
-4. **Monitor Progress**: Watch iteration count to detect stuck loops
+# Sequential + auto
+/moai:loop --sequential --auto
 
-## Error Recovery
+# Max iterations
+/moai:loop --max 50
 
-If the loop gets stuck:
+# Errors only
+/moai:loop --errors
 
-1. Check LSP server status
-2. Verify test framework is working
-3. Review recent changes for syntax errors
-4. Use `/moai:cancel-loop` and fix manually if needed
-
----
-
-## Execution Directive
-
-When this command is invoked:
-
-1. Parse arguments for options
-2. Initialize or resume loop state
-3. Set environment variables:
-   - `MOAI_LOOP_ACTIVE=true`
-   - `MOAI_LOOP_ITERATION=N`
-4. Check initial conditions
-5. If issues exist, provide first iteration guidance
-6. Let hooks handle subsequent iterations
-
-The Stop hook (`stop__loop_controller.py`) manages the loop continuation.
+# Restore
+/moai:loop --resume latest
+```
 
 ---
 
-Version: 1.0.0
-Last Updated: 2026-01-10
-Pattern: Continuous Feedback Loop
-Integration: LSP Diagnostics, AST-grep, Test Runner
+## EXECUTION DIRECTIVE
+
+1. Parse $ARGUMENTS (extract --max, --auto, --sequential, --errors, --coverage, --resume flags)
+
+2. IF --resume flag: Load state from specified snapshot and continue from saved iteration
+
+3. Detect project language from indicator files (pyproject.toml, package.json, go.mod, Cargo.toml)
+
+4. Initialize iteration counter to 0
+
+5. LOOP START (while iteration less than max):
+
+   5a. Check for completion marker in previous response:
+       - If DONE, COMPLETE, or done marker found: Exit loop with success
+
+   5b. Execute diagnostic scan:
+
+       IF --sequential flag is specified:
+
+       - Run LSP, then AST-grep, then Tests, then Coverage sequentially
+
+       ELSE (default parallel mode):
+
+       - Launch all four diagnostic tools in parallel using Bash with run_in_background:
+         - Task 1: LSP diagnostics for detected language
+         - Task 2: AST-grep scan with sgconfig.yml rules
+         - Task 3: Test runner for detected language
+         - Task 4: Coverage measurement for detected language
+
+       - Collect results using TaskOutput for each background task
+
+       - Aggregate results into unified diagnostic report
+
+   5c. Check completion conditions:
+       - Zero errors AND all tests passing AND coverage meets threshold
+       - If all conditions met: Prompt user to add completion marker or continue
+
+   5d. [HARD] Call TodoWrite tool to add newly discovered issues with pending status
+
+   5e. [HARD] Before each fix, call TodoWrite to change item to in_progress
+
+   5f. [HARD] AGENT DELEGATION MANDATE for Fix Execution:
+       - ALL fix tasks MUST be delegated to specialized agents
+       - NEVER execute fixes directly, even after auto compact
+       - WHY: Specialized agents have domain expertise; direct execution violates orchestrator role
+       - This rule applies regardless of session state or context recovery
+
+       Agent Selection by Issue Type:
+       - Type errors, logic bugs: Use expert-debug subagent
+       - Import/module issues: Use expert-backend or expert-frontend subagent
+       - Test failures: Use expert-testing subagent
+       - Security issues: Use expert-security subagent
+       - Performance issues: Use expert-performance subagent
+
+       Execute fixes via agent delegation based on --auto level (Level 1-3)
+
+   5g. [HARD] After each fix completion, call TodoWrite to change item to completed
+
+   5h. Save iteration snapshot to .moai/cache/ralph-snapshots/
+
+   5i. Increment iteration counter
+
+6. LOOP END
+
+7. IF max iterations reached without completion: Display remaining issues and options
+
+8. Report final summary with evidence
+
+---
+
+Version: 2.1.0
+Last Updated: 2026-01-11
+Core: Agentic AI Autonomous Loop

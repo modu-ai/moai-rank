@@ -8,6 +8,19 @@ user-invocable: false
 tags: ['git', 'worktree', 'parallel', 'development', 'spec', 'isolation']
 updated: 2026-01-08
 status: "active"
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["worktree", "git worktree", "parallel development", "isolated workspace", "multiple SPECs", "branch isolation", "feature branch"]
+  phases: ["plan", "run"]
+  agents: ["manager-git", "manager-spec", "manager-project"]
+
 allowed-tools:
   - Read
   - Write
@@ -72,7 +85,7 @@ The registry file stores worktree metadata in JSON format. Each worktree entry c
 
 File Structure:
 
-The worktree system creates a dedicated directory structure. At the worktree root (typically ~/worktrees/ProjectName/), you will find the central registry JSON file and individual directories for each SPEC. Each SPEC directory contains a .git file for worktree metadata and a complete copy of all project files.
+The worktree system creates a dedicated directory structure inside the project's .moai directory. At the worktree root ({repo}/.moai/worktrees/{ProjectName}/), you will find the central registry JSON file and individual directories for each SPEC. Each SPEC directory contains a .git file for worktree metadata and a complete copy of all project files.
 
 Detailed Reference: Refer to Worktree Management Module at modules/worktree-management.md
 

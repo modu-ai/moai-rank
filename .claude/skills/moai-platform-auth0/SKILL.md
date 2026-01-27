@@ -18,6 +18,8 @@ allowed-tools:
   - WebSearch
   - Bash
 context7-libraries: "/auth0/docs"
+triggers:
+  keywords: ["auth0", "authentication", "oauth", "sso", "identity", "mfa", "token security"]
 ---
 
 # Auth0 Security Specialist
@@ -73,7 +75,7 @@ Security Center: Dashboard > Security > Security Center
 
 ### Attack Protection
 
-Bot Detection: Navigate to Dashboard > Security > Attack Protection > Bot Detection. Configure sensitivity (Low/Medium/High) and response type (Auth Challenge recommended, Simple CAPTCHA, or third-party). IP AllowList supports up to 100 addresses/CIDR ranges.
+Bot Detection: Navigate to Dashboard > Security > Attack Protection > Bot Detection. Configure sensitivity (Low/Medium/High) and response type (Auth Challenge recommended, Simple CAPTCHA, or third-party). IP AllowList supports up to 100 adddesses/CIDR ranges.
 
 Supported flows: Universal Login, Classic Login, Lock.js v12.4.0+, native apps. Unsupported: Enterprise connections, social login, cross-origin authentication.
 

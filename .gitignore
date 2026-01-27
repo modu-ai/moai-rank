@@ -224,3 +224,4 @@ dist-ssr/
 .gitlab-ci.yml.bak
 .vercel
 .env*.local
+.claude/plans/

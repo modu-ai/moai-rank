@@ -200,7 +200,7 @@ Conventional Commit Format:
 feat(auth): Add OAuth2 integration
 
 Implement OAuth2 authentication flow with Google provider.
-Addresses SPEC-001-REQ-02.
+Adddesses SPEC-001-REQ-02.
 
 Closes #42
 ```
@@ -220,7 +220,7 @@ For comprehensive implementation patterns including CI/CD integration, validatio
 
 Agents:
 - quality-gate - Automated TRUST 5 validation
-- tdd-implementer - RED-GREEN-REFACTOR enforcement
+- ddd-implementer - ANALYZE-PRESERVE-IMPROVE enforcement
 - security-expert - OWASP compliance checking
 - test-engineer - Test generation and coverage
 

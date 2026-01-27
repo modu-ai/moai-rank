@@ -1,8 +1,8 @@
 ---
-description: "Auto-fix current LSP errors and AST-grep warnings"
-argument-hint: "[--errors-only] [--dry-run] [file_path]"
+description: "Agentic auto-fix - Parallel scan with autonomous correction"
+argument-hint: "[--dry] [--sequential] [--level N] [file_path] | --resume [ID]"
 type: utility
-allowed-tools: Task, AskUserQuestion, Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 
@@ -17,288 +17,308 @@ model: inherit
 
 ---
 
-# /moai:fix - Automatic Error and Warning Fixer
+# /moai:fix - Agentic Auto-Fix
 
-Automatically detect and fix LSP errors, linting issues, and AST-grep warnings in the current project or specific files.
+## Core Principle: Fully Autonomous Fixing
+
+AI autonomously finds and fixes issues.
+
+```
+START: Issue Detection
+  ↓
+AI: Parallel Scan → Classify → Fix → Verify
+  ↓
+AI: Add Completion Marker
+```
 
 ## Command Purpose
 
-Provides one-command fixing for common code issues:
+Autonomously fix LSP errors and linting issues:
 
-1. Scans for LSP diagnostics (errors and warnings)
-2. Identifies AST-grep security and quality issues
-3. Applies safe auto-fixes where possible
-4. Reports issues requiring manual intervention
+1. **Parallel Scan** (LSP + AST-grep + Linters simultaneously)
+2. **Auto Classification** (Level 1-4)
+3. **Auto Fix** (Level 1-2)
+4. **Verification**
+5. **Report**
 
 Target: $ARGUMENTS
 
-## Usage Examples
+## Quick Start
 
-Fix all issues in project:
-
-```
+```bash
+# Default fix (parallel scan)
 /moai:fix
-```
 
-Fix specific file:
+# Sequential scan (for debugging)
+/moai:fix --sequential
 
-```
+# Preview only
+/moai:fix --dry
+
+# Specific file
 /moai:fix src/auth.py
-```
 
-Fix errors only (ignore warnings):
+# Limit fix level
+/moai:fix --level 2
 
-```
-/moai:fix --errors-only
-```
+# Resume from last snapshot
+/moai:fix --resume
 
-Preview fixes without applying:
-
-```
-/moai:fix --dry-run
+# Resume from specific snapshot
+/moai:fix --resume fix-20260119-143052
 ```
 
 ## Command Options
 
-- `file_path`: Optional specific file or directory to fix
-- `--errors-only`: Only fix errors, skip warnings and hints
-- `--dry-run`: Show what would be fixed without making changes
-- `--include-security`: Include AST-grep security fixes
-- `--no-format`: Skip auto-formatting after fixes
+| Option | Alias | Description | Default |
+|--------|-------|-------------|---------|
+| `--dry` | --dry-run | Preview only | Apply |
+| `--sequential` | --seq | Sequential scan (for debugging) | Parallel |
+| `--level N` | - | Maximum fix level | 3 |
+| `--errors` | --errors-only | Fix errors only | All |
+| `--security` | --include-security | Include security issues | Exclude |
+| `--no-fmt` | --no-format | Skip formatting | Include |
+| `--resume [ID]` | --resume-from | Resume from snapshot | Latest |
 
-## Fix Categories
+## Parallel Scan
 
-### Category 1: Auto-Fixable (Applied Automatically)
+```bash
+# Sequential (30s)
+LSP → AST → Linter
 
-These issues are safe to fix automatically:
-
-**Python**:
-
-- Import sorting (isort/ruff)
-- Unused imports removal
-- Whitespace/formatting (black/ruff)
-- Simple type annotations
-- f-string conversions
-- Dictionary comprehension suggestions
-
-**TypeScript/JavaScript**:
-
-- Import organization
-- Unused variable removal (when safe)
-- Formatting (prettier)
-- Simple ESLint auto-fixes
-
-**General**:
-
-- Trailing whitespace
-- Missing newlines at EOF
-- Mixed indentation
-
-### Category 2: Semi-Auto (Require Confirmation)
-
-These fixes are suggested but need user approval:
-
-- Renaming to fix typos
-- Adding missing function parameters
-- Changing return types
-- Modifying exception handling
-- Updating deprecated API calls
-
-### Category 3: Manual (Report Only)
-
-These issues require manual intervention:
-
-- Logic errors
-- Security vulnerabilities
-- Architectural issues
-- Complex type mismatches
-- Missing implementations
-
-## Execution Flow
-
-```
-START: /moai:fix [options] [target]
-
-PHASE 1: SCAN
-  |-- Run LSP diagnostics on target
-  |-- Run AST-grep security scan
-  |-- Run linter checks
-  |-- Collect all issues
-  |
-  v
-PHASE 2: CATEGORIZE
-  |-- Sort issues by fixability
-  |-- Group by file
-  |-- Prioritize by severity
-  |
-  v
-PHASE 3: DRY-RUN CHECK
-  |-- IF --dry-run: Report and EXIT
-  |
-  v
-PHASE 4: AUTO-FIX
-  |-- Apply Category 1 fixes
-  |-- Run formatters
-  |-- Re-scan for remaining issues
-  |
-  v
-PHASE 5: SEMI-AUTO
-  |-- Present Category 2 fixes
-  |-- Get user approval for each
-  |-- Apply approved fixes
-  |
-  v
-PHASE 6: REPORT
-  |-- List remaining manual issues
-  |-- Show fix summary
-  |-- Suggest next steps
-
-END: Summary with remaining issues
+# Parallel (8s)
+LSP   ├─┐
+      ├─→ Merge (3.75x faster)
+AST   ├─┤
+     ├─┘
+Linter
 ```
 
-## Integration with Tools
+### Parallel Scan Implementation
 
-### LSP Integration
+By default, execute all diagnostic tools simultaneously for optimal performance:
 
-Uses `MoAILSPClient` for language-aware diagnostics:
+Step 1 - Launch Background Tasks:
 
-- Python: pyright/pylsp
-- TypeScript: tsserver
-- Go: gopls
-- Rust: rust-analyzer
+1. LSP Diagnostics: Use Bash tool with run_in_background set to true for LSP diagnostic command based on detected language
+2. AST-grep Scan: Use Bash tool with run_in_background set to true for ast-grep with security rules from sgconfig.yml
+3. Linter Scan: Use Bash tool with run_in_background set to true for appropriate linter (ruff, eslint, etc.)
 
-### AST-grep Integration
+Step 2 - Collect Results:
 
-Runs security and quality scans:
+1. Use TaskOutput tool to collect results from all three background tasks
+2. Wait for all tasks to complete (timeout: 120 seconds per task)
+3. Handle partial failures gracefully - continue with available results
 
-- SQL injection patterns
-- XSS vulnerabilities
-- Insecure configurations
-- Code smell patterns
+Step 3 - Aggregate and Deduplicate:
 
-### Linter Integration
+1. Parse output from each tool into structured issue list
+2. Remove duplicate issues appearing in multiple scanners
+3. Sort by severity: Critical, High, Medium, Low
+4. Group by file path for efficient fixing
 
-Leverages existing linters via `tool_registry.py`:
+Step 4 - Proceed to Classification:
 
-- ruff (Python)
-- eslint/biome (TypeScript/JavaScript)
-- golangci-lint (Go)
-- clippy (Rust)
+1. Classify aggregated issues into Levels 1-4
+2. Call TodoWrite with all issues as pending items
+3. Begin fix execution
+
+Language-Specific Commands:
+
+Python: ruff check --output-format json for linter, mypy --output json for types
+TypeScript: eslint --format json for linter, tsc --noEmit for types
+Go: golangci-lint run --out-format json for linter
+Rust: cargo clippy --message-format json for linter
+
+## Auto-Fix Levels
+
+| Level | Description | Approval | Examples |
+|-------|-------------|----------|----------|
+| 1 | Immediate | Not required | import, whitespace |
+| 2 | Safe | Log only | rename var, add type |
+| 3 | Review | Required | logic, API |
+| 4 | Manual | Not allowed | security, architecture |
+
+## TODO-Obsessive Rule
+
+[HARD] TodoWrite Tool Mandatory Usage:
+
+1. Immediate Creation: When issues are discovered, call TodoWrite tool to add items with pending status
+2. Immediate Progress: Before starting work, call TodoWrite tool to change item to in_progress
+3. Immediate Completion: After completing work, call TodoWrite tool to change item to completed
+4. Prohibited: Output TODO lists as text (MUST use TodoWrite tool)
+
+WHY: Using TodoWrite tool allows users to track progress in real-time.
 
 ## Output Format
 
-### Dry-Run Output
+### Preview
 
 ```markdown
-## Dry Run: /moai:fix
+## Fix: Dry Run
 
-### Would Fix Automatically (12 issues)
+### Scan (0.8s, parallel)
+- LSP: 12 issues
+- AST-grep: 0 security
+- Linter: 5 issues
 
-- src/auth.py: 4 issues (unused imports, formatting)
-- src/api/routes.py: 3 issues (import order)
-- tests/test_auth.py: 5 issues (whitespace)
+### Level 1 (12 items)
+- src/auth.py: import, formatting
+- src/api/routes.py: import order
+- tests/test_auth.py: whitespace
 
-### Would Require Confirmation (3 issues)
+### Level 2 (3 items)
+- src/auth.py:45 - 'usr' → 'user'
+- src/api/routes.py:78 - add type
+- src/models.py:23 - dataclass?
 
-- src/auth.py:45 - Rename 'usr' to 'user'?
-- src/api/routes.py:78 - Add return type annotation?
-- src/models.py:23 - Convert to dataclass?
+### Level 4 (2 items)
+- src/auth.py:67 - logic error
+- src/api/routes.py:112 - SQL injection
 
-### Manual Fixes Needed (2 issues)
-
-- [ERROR] src/auth.py:67 - Logic error in token validation
-- [SECURITY] src/api/routes.py:112 - Potential SQL injection
-
-No changes made (dry run).
+No changes (--dry).
 ```
 
-### Fix Completion Output
+### Complete
 
 ```markdown
-## Fix Complete: /moai:fix
+## Fix: Complete
 
-### Applied Fixes (15 total)
+### Applied
+- Level 1: 12 issues
+- Level 2: 3 issues
+- Level 3: 0 issues
 
-- Auto-fixed: 12 issues
-- User-approved: 3 issues
-- Skipped: 0 issues
+### Evidence
+**src/auth.py:5** - Removed unused `os`, `sys`
+**src/auth.py:23** - Fixed whitespace
+**src/api/routes.py:12** - Sorted imports
 
-### Files Modified
+### Remaining (Level 4)
+1. src/auth.py:67 - logic error
+2. src/api/routes.py:112 - SQL injection
 
-- src/auth.py (7 fixes)
-- src/api/routes.py (5 fixes)
-- tests/test_auth.py (3 fixes)
-
-### Remaining Issues (2 manual)
-
-1. [ERROR] src/auth.py:67
-   Logic error in token validation
-   Suggestion: Review the condition on line 67
-
-2. [SECURITY] src/api/routes.py:112
-   Potential SQL injection
-   Suggestion: Use parameterized queries
-
-### Verification
-
-- Linter: PASS
-- Tests: 24/24 passing
-- Coverage: 87%
+### Next
+/moai:loop  # Continue with loop
 ```
 
-## Error Handling
+## Quick Reference
 
-### If LSP Unavailable
+```bash
+# Fix (default parallel)
+/moai:fix
 
-Falls back to linter-based detection:
+# Sequential scan
+/moai:fix --sequential
 
-- Uses ruff for Python
-- Uses tsc for TypeScript
-- Reports degraded mode to user
+# Preview only
+/moai:fix --dry
 
-### If Fixes Cause New Issues
+# Errors only
+/moai:fix --errors
 
-- Detects regression
-- Reverts problematic fixes
-- Reports to user with details
-
-### If Tests Fail After Fixes
-
-- Warns user
-- Suggests running full test suite
-- Offers to revert changes
-
-## Best Practices
-
-1. **Run Tests First**: Ensure tests pass before fixing
-2. **Use Dry-Run**: Preview changes with `--dry-run` first
-3. **Commit Before Fixing**: Have a clean commit to revert to
-4. **Review Changes**: Always review auto-fixes before committing
-5. **Fix Incrementally**: Fix one category at a time for complex projects
-
-## Related Commands
-
-- `/moai:loop`: Continuous fix loop until all issues resolved
-- `/moai:cancel-loop`: Stop an active fix loop
-- `/moai:2-run`: TDD implementation with integrated fixing
+# Specific file
+/moai:fix src/auth.py
+```
 
 ---
 
-## Execution Directive
+## EXECUTION DIRECTIVE
 
-[HARD] Execute the fix workflow immediately upon command invocation:
+1. Parse $ARGUMENTS (extract --sequential, --dry, --level, --errors, --security flags)
 
-1. Scan for issues using LSP diagnostics and AST-grep
-2. Categorize issues by fixability (auto, semi-auto, manual)
-3. Apply auto-fixes without user intervention
-4. Present semi-auto fixes for user approval via AskUserQuestion
-5. Report remaining manual issues
+2. Detect project language from indicator files (pyproject.toml, package.json, go.mod, Cargo.toml)
 
-Note: This command uses direct tool access (Edit, Write) intentionally for quick one-time fixes. For iterative fixing with full agent support, use `/moai:loop` instead.
+3. Execute diagnostic scan:
+
+   IF --sequential flag is specified:
+
+   3a. Run LSP diagnostics, then AST-grep, then Linter sequentially
+
+   ELSE (default parallel mode):
+
+   3b. Launch all three diagnostic tools in parallel using Bash with run_in_background:
+       - Task 1: LSP diagnostics for detected language
+       - Task 2: AST-grep scan with sgconfig.yml rules
+       - Task 3: Linter for detected language
+
+   3c. Collect results using TaskOutput for each background task
+
+   3d. Aggregate results, remove duplicates, sort by severity
+
+4. Classify aggregated issues into Level 1-4
+
+5. [HARD] Call TodoWrite tool to add all discovered issues with pending status
+
+6. IF --dry flag: Display preview and exit
+
+7. [HARD] Before each fix, call TodoWrite to change item to in_progress
+
+8. [HARD] AGENT DELEGATION MANDATE for Fix Execution:
+   - ALL fix tasks MUST be delegated to specialized agents
+   - NEVER execute fixes directly, even after auto compact
+   - WHY: Specialized agents have domain expertise; direct execution violates orchestrator role
+   - This rule applies regardless of session state or context recovery
+
+   Agent Selection by Fix Level:
+   - Level 1 (import, formatting): Use expert-backend or expert-frontend subagent
+   - Level 2 (rename, type): Use expert-refactoring subagent
+   - Level 3 (logic, API): Use expert-debug or expert-backend subagent
+
+   Execute Level 1-2 fixes via agent delegation automatically
+
+9. [HARD] After each fix completion, call TodoWrite to change item to completed
+
+10. Request approval for Level 3 fixes via AskUserQuestion, then delegate to appropriate agent
+
+11. Verify fixes by re-running affected diagnostics
+
+12. Report with evidence (file:line changes made)
+
+13. Save fix snapshot to .moai/cache/fix-snapshots/ for potential resume
 
 ---
 
-Version: 1.0.0
-Last Updated: 2026-01-10
-Pattern: Scan-Categorize-Fix
-Integration: LSP, AST-grep, Linters, Formatters
+## State & Snapshot
+
+Fix state is saved for resume capability:
+
+```
+# Snapshot location
+.moai/cache/fix-snapshots/
+├── fix-20260119-143052.json    # Timestamp-based snapshot
+├── fix-20260119-150230.json
+└── latest.json                  # Symlink to most recent
+
+# Snapshot contents
+{
+  "timestamp": "2026-01-19T14:30:52Z",
+  "target_path": "src/",
+  "issues_found": 15,
+  "issues_fixed": 8,
+  "issues_pending": 7,
+  "current_level": 2,
+  "todo_state": [...],
+  "scan_results": {...}
+}
+```
+
+Resume Commands:
+
+```bash
+# Resume from latest snapshot
+/moai:fix --resume
+
+# Resume from specific snapshot
+/moai:fix --resume fix-20260119-143052
+```
+
+WHY: Resume capability prevents loss of fix progress after auto compact or session interruption.
+
+IMPACT: Users can continue fixing from where they left off without re-scanning.
+
+---
+
+Version: 2.2.0
+Last Updated: 2026-01-19
+Core: Agentic AI Auto-Fix with Resume Support

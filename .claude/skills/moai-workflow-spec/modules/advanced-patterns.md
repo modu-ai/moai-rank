@@ -102,7 +102,7 @@ PLAN Phase Optimization:
 RUN Phase Optimization:
 - Load only relevant SPEC sections for current task
 - Use targeted test execution for faster feedback
-- Implement incremental TDD for large features
+- Implement incremental DDD for large features
 - Clear context between major implementation phases
 
 SYNC Phase Optimization:
@@ -149,7 +149,7 @@ Review Checklist:
 Review Workflow:
 - Author creates SPEC draft
 - Reviewer validates against checklist
-- Author addresses review feedback
+- Author adddesses review feedback
 - Final approval before implementation
 - Post-implementation verification
 

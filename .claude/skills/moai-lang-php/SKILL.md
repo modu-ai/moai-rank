@@ -4,6 +4,18 @@ description: "PHP 8.3+ development specialist covering Laravel 11, Symfony 7, El
 version: 1.1.0
 category: "language"
 modularized: true
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["PHP", "Laravel", "Symfony", "Eloquent", "Doctrine", "PHPUnit", "Pest", ".php", "composer.json", "artisan"]
+  languages: ["php"]
+
 user-invocable: false
 tags:
   ["language", "php", "laravel", "symfony", "eloquent", "doctrine", "phpunit"]
@@ -142,7 +154,7 @@ See:
 
 - moai-domain-backend for REST API and microservices architecture
 - moai-domain-database for SQL patterns and ORM optimization
-- moai-workflow-testing for TDD and testing strategies
+- moai-workflow-testing for DDD and testing strategies
 - moai-platform-deploy for Docker and deployment patterns
 - moai-essentials-debug for AI-powered debugging
 - moai-foundation-quality for TRUST 5 quality principles

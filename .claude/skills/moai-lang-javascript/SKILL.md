@@ -4,6 +4,18 @@ description: "JavaScript ES2024+ development specialist covering Node.js 22 LTS,
 version: 1.2.0
 category: "language"
 modularized: false
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["JavaScript", "Node.js", "Bun", "Deno", "Express", "Fastify", "Hono", "Vitest", "Jest", "ESLint", ".js", "package.json"]
+  languages: ["javascript", "js"]
+
 user-invocable: false
 tags:
   [
@@ -149,7 +161,7 @@ For Node.js documentation, use context7 get library docs with nodejs/node and to
 - moai-lang-typescript for TypeScript integration and type checking with JSDoc
 - moai-domain-backend for API design and microservices architecture
 - moai-domain-database for database integration and ORM patterns
-- moai-workflow-testing for TDD workflows and testing strategies
+- moai-workflow-testing for DDD workflows and testing strategies
 - moai-foundation-quality for code quality standards
 - moai-essentials-debug for debugging JavaScript applications
 

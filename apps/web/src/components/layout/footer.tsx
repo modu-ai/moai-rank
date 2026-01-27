@@ -14,7 +14,7 @@ export function Footer() {
 
         <div className="flex items-center gap-4">
           <Link
-            href="https://github.com/goosiux/moai-rank"
+            href="https://github.com/modu-ai/moai-rank"
             target="_blank"
             rel="noopener noreferrer"
             className="text-muted-foreground transition-colors hover:text-foreground"

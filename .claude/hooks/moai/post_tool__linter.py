@@ -14,17 +14,19 @@ Provides feedback to Claude about code quality issues:
 
 Exit Codes:
 - 0: Success (linting completed, issues reported as context)
-- 2: Critical lint errors (Claude should address immediately)
+- 2: Critical lint errors (Claude should adddess immediately)
 
 Output:
 - JSON with additionalContext containing lint issues
 - Exit code 2 triggers Claude to review and fix issues
 """
 
+from __future__ import annotations
+
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
@@ -32,13 +34,16 @@ LIB_DIR = HOOKS_DIR / "lib"
 if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
+# Try importing tool_registry, with fallback
 try:
-    from lib.tool_registry import ToolResult, ToolType, get_tool_registry
-except ImportError:
-    # Fallback if module not available
-    def get_tool_registry():
-        return None
+    import tool_registry  # noqa: F401
+    from tool_registry import ToolType  # noqa: F401
 
+    TOOL_REGISTRY_AVAILABLE = True
+except ImportError:
+    TOOL_REGISTRY_AVAILABLE = False
+
+    # Fallback definitions
     class ToolType:
         LINTER = "linter"
 
@@ -118,7 +123,7 @@ def should_skip_file(file_path: str) -> tuple[bool, str]:
     return False, ""
 
 
-def parse_lint_output(output: str, error: str) -> List[Dict[str, Any]]:
+def parse_lint_output(output: str, error: str) -> list[dict[str, Any]]:
     """Parse linter output to extract issues.
 
     Args:
@@ -128,7 +133,7 @@ def parse_lint_output(output: str, error: str) -> List[Dict[str, Any]]:
     Returns:
         List of parsed issues
     """
-    issues = []
+    issues: list[dict[str, Any]] = []
     combined = (output + "\n" + error).strip()
 
     if not combined:
@@ -166,7 +171,7 @@ def parse_lint_output(output: str, error: str) -> List[Dict[str, Any]]:
     return issues
 
 
-def lint_file(file_path: str) -> Dict[str, Any]:
+def lint_file(file_path: str) -> dict[str, Any]:
     """Lint a single file using the appropriate linter.
 
     Args:
@@ -175,7 +180,7 @@ def lint_file(file_path: str) -> Dict[str, Any]:
     Returns:
         Dictionary with linting results
     """
-    results: Dict[str, Any] = {
+    results: dict[str, Any] = {
         "file": file_path,
         "linted": False,
         "issues": [],
@@ -192,7 +197,11 @@ def lint_file(file_path: str) -> Dict[str, Any]:
         return results
 
     # Get tool registry
-    registry = get_tool_registry()
+    if not TOOL_REGISTRY_AVAILABLE:
+        results["errors"].append("Tool registry not available")
+        return results
+
+    registry = tool_registry.get_tool_registry()
     if not registry:
         results["errors"].append("Tool registry not available")
         return results
@@ -265,7 +274,7 @@ def main() -> None:
     result = lint_file(file_path)
 
     # Build output
-    output: Dict[str, Any] = {}
+    output: dict[str, Any] = {}
 
     if result.get("issues"):
         # Issues found - provide context to Claude

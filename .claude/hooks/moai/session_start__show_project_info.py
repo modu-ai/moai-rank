@@ -14,12 +14,16 @@ Enhanced Features:
 - Risk assessment with performance metrics
 """
 
+from __future__ import annotations
+
 import json
 import logging
+import re
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # =============================================================================
 # Windows UTF-8 Encoding Fix (Issue #249)
@@ -67,7 +71,30 @@ if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
 # Import path utils for project root resolution
+from lib.file_utils import check_file_size  # noqa: E402
 from lib.path_utils import find_project_root  # noqa: E402
+
+# Import context manager for session continuity
+try:
+    from lib.context_manager import (
+        archive_context_snapshot,
+        format_context_for_injection,
+        load_context_snapshot,
+    )
+
+    HAS_CONTEXT_MANAGER = True
+except ImportError:
+    HAS_CONTEXT_MANAGER = False
+
+    def load_context_snapshot(project_root):
+        return None
+
+    def format_context_for_injection(snapshot, language="en"):
+        return ""
+
+    def archive_context_snapshot(project_root):
+        return True
+
 
 # Import unified timeout manager and Git operations manager
 try:
@@ -250,8 +277,15 @@ except ImportError:
         """Load a YAML file using PyYAML or simple parser."""
         if not file_path.exists():
             return {}
+
+        # Check file size before reading (H2: 10MB limit)
+        is_safe, error_msg = check_file_size(file_path)
+        if not is_safe:
+            # File too large or other error, skip loading
+            return {}
+
         try:
-            content = file_path.read_text(encoding="utf-8")
+            content = file_path.read_text(encoding="utf-8", errors="replace")
             if HAS_YAML_FALLBACK:
                 return yaml_fallback.safe_load(content) or {}
             else:
@@ -280,9 +314,14 @@ except ImportError:
         if not config:
             json_config_path = config_dir / "config.json"
             if json_config_path.exists():
-                try:
-                    config = json.loads(json_config_path.read_text(encoding="utf-8"))
-                except (json.JSONDecodeError, OSError):
+                # Check file size before reading (H2: 10MB limit)
+                is_safe, _ = check_file_size(json_config_path)
+                if is_safe:
+                    try:
+                        config = json.loads(json_config_path.read_text(encoding="utf-8", errors="replace"))
+                    except (json.JSONDecodeError, OSError):
+                        config = {}
+                else:
                     config = {}
 
         # Merge section files (they take priority for their specific keys)
@@ -328,7 +367,7 @@ except ImportError:
 
                 try:
                     # Read spec.md content
-                    content = spec_file.read_text(encoding="utf-8")
+                    content = spec_file.read_text(encoding="utf-8", errors="replace")
 
                     # Parse YAML frontmatter (between --- delimiters)
                     if content.startswith("---"):
@@ -419,7 +458,7 @@ def check_git_initialized() -> bool:
         return False
 
 
-def get_git_info() -> Dict[str, Any]:
+def get_git_info() -> dict[str, Any]:
     """Get comprehensive git information using optimized Git operations manager
 
     FIXED: Handles git not initialized state properly
@@ -468,6 +507,7 @@ def get_git_info() -> Dict[str, Any]:
 
     # Fallback to basic Git operations
     try:
+        import concurrent.futures
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         # Define git commands to run in parallel
@@ -486,14 +526,27 @@ def get_git_info() -> Dict[str, Any]:
             # Submit all tasks
             futures = {executor.submit(_run_git_command_fallback, cmd): key for cmd, key in git_commands}
 
-            # Collect results as they complete
-            for future in as_completed(futures):
-                key = futures[future]
-                try:
-                    results[key] = future.result()
-                except (TimeoutError, RuntimeError):
-                    # Future execution timeout or runtime errors
-                    results[key] = ""
+            # Collect results as they complete with overall timeout
+            # FIX #254: Add timeout to prevent infinite waiting on stuck git operations
+            try:
+                for future in as_completed(futures, timeout=8):
+                    key = futures[future]
+                    try:
+                        results[key] = future.result()
+                    except (TimeoutError, RuntimeError):
+                        # Future execution timeout or runtime errors
+                        results[key] = ""
+            except concurrent.futures.TimeoutError:
+                # Overall timeout exceeded - use whatever results we have
+                logging.warning("Git operations timeout after 8 seconds - using partial results")
+                # Collect any completed futures before timeout
+                for future, key in futures.items():
+                    if future.done():
+                        try:
+                            if key not in results:
+                                results[key] = future.result()
+                        except (TimeoutError, RuntimeError):
+                            results[key] = ""
 
         # Process results with proper handling for empty values
         branch = results.get("branch", "")
@@ -637,7 +690,7 @@ def check_version_update() -> tuple[str, bool]:
 
         if version_cache_file.exists():
             try:
-                cache_data = json.loads(version_cache_file.read_text())
+                cache_data = json.loads(version_cache_file.read_text(encoding="utf-8", errors="replace"))
                 latest_version = cache_data.get("latest")
             except (json.JSONDecodeError, OSError, UnicodeDecodeError):
                 # Cache file read or JSON parsing errors
@@ -899,13 +952,17 @@ def format_session_output() -> str:
     # Load user personalization settings
     personalization = load_user_personalization()
 
-    # Get MoAI version from installed package (not config.json)
+    # Get MoAI version from CLI (works with uv tool installations)
     try:
-        from moai_adk import __version__ as installed_version
-
-        moai_version = installed_version
-    except ImportError:
-        # Fallback to config version if package import fails
+        result = subprocess.run(["moai", "--version"], capture_output=True, text=True, check=True, timeout=5)
+        # Extract version number from output (e.g., "MoAI version X.Y.Z" or "X.Y.Z")
+        version_match = re.search(r"(\d+\.\d+\.\d+)", result.stdout)
+        if version_match:
+            moai_version = version_match.group(1)
+        else:
+            moai_version = "unknown"
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        # Fallback to config version if CLI fails
         moai_version = "unknown"
         if config:
             moai_version = config.get("moai", {}).get("version", "unknown")
@@ -932,34 +989,91 @@ def format_session_output() -> str:
     ]
 
     # FIX #5: Add personalization or setup guidance (never show template variables)
+    # Multilingual support: ko, en, ja, zh
+    conv_lang = personalization.get("conversation_language", "en")
+
     if personalization.get("needs_setup", False):
         # Show setup guidance (based on conversation_language)
-        if personalization["is_korean"]:
-            output.append(
-                "   👋 환영합니다! 프로젝트를 시작하기 전에 "
-                "'/moai:0-project setting' 명령어로 사용자 이름과 설정을 구성해주세요"
-            )
-        else:
-            output.append(
-                "   👋 Welcome! Before starting, please run '/moai:0-project setting' "
-                "to configure your name and project settings"
-            )
+        # Guide user to generate project documentation with /moai:0-project
+        setup_messages = {
+            "ko": "   👋 환영합니다! '/moai:0-project' 명령어로 프로젝트 문서를 생성해주세요",
+            "ja": "   👋 ようこそ！'/moai:0-project' コマンドでプロジェクトドキュメントを生成してください",
+            "zh": "   👋 欢迎！请运行 '/moai:0-project' 命令生成项目文档",
+            "en": "   👋 Welcome! Please run '/moai:0-project' to generate project documentation",
+        }
+        output.append(setup_messages.get(conv_lang, setup_messages["en"]))
     elif personalization["has_personalization"]:
         user_greeting = personalization.get("personalized_greeting", "")
-        if user_greeting:
-            if personalization["is_korean"]:
-                greeting = f"   👋 다시 오신 것을 환영합니다, {user_greeting}!"
-            else:
-                greeting = f"   👋 Welcome back, {user_greeting}!"
-        else:
-            if personalization["is_korean"]:
-                greeting = f"   👋 다시 오신 것을 환영합니다, {personalization['user_name']}님!"
-            else:
-                greeting = f"   👋 Welcome back, {personalization['user_name']}!"
-        output.append(greeting)
+        user_name = personalization.get("user_name", "")
+        display_name = user_greeting if user_greeting else user_name
+
+        # Prevent duplicate honorifics (e.g., "님님" in Korean, "さんさん" in Japanese)
+        ko_suffix = "" if display_name.endswith("님") else "님"
+        ja_suffix = "" if display_name.endswith("さん") else "さん"
+
+        welcome_back_messages = {
+            "ko": f"   👋 다시 오신 것을 환영합니다, {display_name}{ko_suffix}!",
+            "ja": f"   👋 おかえりなさい、{display_name}{ja_suffix}！",
+            "zh": f"   👋 欢迎回来，{display_name}！",
+            "en": f"   👋 Welcome back, {display_name}!",
+        }
+        output.append(welcome_back_messages.get(conv_lang, welcome_back_messages["en"]))
 
     # Configuration source is now handled silently for cleaner output
     # Users can check configuration using dedicated tools if needed
+
+    # Check for previous session context (session continuity feature)
+    if HAS_CONTEXT_MANAGER:
+        try:
+            project_root = find_project_root()
+            snapshot = load_context_snapshot(project_root)
+
+            if snapshot:
+                # Format and append previous context
+                context_message = format_context_for_injection(snapshot, conv_lang)
+                if context_message:
+                    output.append(context_message)
+
+                # Archive the snapshot after loading (move to archive)
+                archive_context_snapshot(project_root)
+
+            # Check for Memory MCP payload (generated by PreCompact hook)
+            mcp_payload_path = project_root / ".moai" / "memory" / "mcp-payload.json"
+            if mcp_payload_path.exists():
+                output.append("\n[MEMORY_MCP_SYNC] .moai/memory/mcp-payload.json available for Memory MCP sync")
+
+            # Check for SPEC state (available even without full snapshot)
+            if not snapshot:
+                spec_state_path = project_root / ".moai" / "memory" / "spec-state.json"
+                if spec_state_path.exists():
+                    try:
+                        spec_state = json.loads(spec_state_path.read_text(encoding="utf-8"))
+                        active_spec = spec_state.get("active_spec", {})
+                        if active_spec.get("id"):
+                            spec_id = active_spec.get("id", "")
+                            phase = active_spec.get("phase", "")
+                            progress = active_spec.get("progress_percent", 0)
+                            output.append(f"\n[SPEC_STATE] {spec_id} | {phase} | {progress}%")
+                    except (json.JSONDecodeError, OSError):
+                        pass
+
+            # Check for tasks backup (available even without full snapshot)
+            if not snapshot:
+                tasks_path = project_root / ".moai" / "memory" / "tasks-backup.json"
+                if tasks_path.exists():
+                    try:
+                        tasks_data = json.loads(tasks_path.read_text(encoding="utf-8"))
+                        task_list = tasks_data.get("tasks", [])
+                        if task_list:
+                            active = [t for t in task_list if t.get("status") in ("in_progress", "pending")]
+                            if active:
+                                output.append(f"[TASKS_BACKUP] {len(active)} active tasks found in backup")
+                    except (json.JSONDecodeError, OSError):
+                        pass
+
+        except Exception as e:
+            # Non-critical error - just log and continue
+            logging.warning(f"Failed to load previous context: {e}")
 
     return "\n".join(output)
 
@@ -997,11 +1111,86 @@ def main() -> None:
 
     def execute_session_start():
         """Execute session start logic with proper error handling"""
-        # Read JSON payload from stdin (for compatibility)
-        # Handle Docker/non-interactive environments by checking TTY
-        # Note: SessionStart hook receives session info but we don't need it currently
+        # Read JSON payload from stdin
         input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
-        _ = json.loads(input_data) if input_data.strip() else {}  # Explicitly ignore
+        payload = json.loads(input_data) if input_data.strip() else {}
+
+        # Detect /clear: save context from transcript before restoration
+        source = payload.get("source", "")
+        transcript_path = payload.get("transcript_path", "")
+        if source == "clear" and transcript_path and HAS_CONTEXT_MANAGER:
+            try:
+                from lib.context_manager import (
+                    parse_transcript_context,
+                    save_context_snapshot,
+                    save_spec_state,
+                    save_tasks_backup,
+                )
+
+                project_root = find_project_root()
+                transcript_data = parse_transcript_context(transcript_path)
+
+                # Build context from transcript
+                context = {
+                    "current_spec": transcript_data.get("current_spec", {}),
+                    "active_tasks": transcript_data.get("active_tasks", []),
+                    "recent_files": transcript_data.get("recent_files", []),
+                    "key_decisions": transcript_data.get("key_decisions", []),
+                    "current_branch": "",
+                    "uncommitted_changes": False,
+                }
+
+                # Fill git info
+                try:
+                    branch_result = subprocess.run(
+                        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                        capture_output=True,
+                        text=True,
+                        timeout=3,
+                        cwd=str(project_root),
+                    )
+                    if branch_result.returncode == 0:
+                        context["current_branch"] = branch_result.stdout.strip()
+                    status_result = subprocess.run(
+                        ["git", "status", "--porcelain"],
+                        capture_output=True,
+                        text=True,
+                        timeout=3,
+                        cwd=str(project_root),
+                    )
+                    if status_result.returncode == 0:
+                        context["uncommitted_changes"] = bool(status_result.stdout.strip())
+                except Exception:
+                    pass
+
+                # Build summary
+                parts = []
+                spec_id = context["current_spec"].get("id", "")
+                if spec_id:
+                    parts.append(spec_id)
+                if context["active_tasks"]:
+                    parts.append(f"{len(context['active_tasks'])} active tasks")
+                if context["key_decisions"]:
+                    parts.append(f"{len(context['key_decisions'])} decisions")
+                if context["uncommitted_changes"]:
+                    parts.append("Has uncommitted changes")
+                summary = ". ".join(parts) if parts else "Session cleared"
+
+                # Save snapshot for format_session_output() to pick up
+                save_context_snapshot(
+                    project_root=project_root,
+                    trigger="clear",
+                    context=context,
+                    conversation_summary=summary,
+                    session_id=payload.get("session_id", ""),
+                )
+                if spec_id:
+                    save_spec_state(project_root, context["current_spec"])
+                if context["active_tasks"]:
+                    save_tasks_backup(project_root, context["active_tasks"])
+
+            except Exception as e:
+                logging.warning(f"Failed to save context on /clear: {e}")
 
         # Check if setup messages should be shown
         show_messages = should_show_setup_messages()
@@ -1010,7 +1199,7 @@ def main() -> None:
         session_output = format_session_output() if show_messages else ""
 
         # Return as system message
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "continue": True,
             "systemMessage": session_output,
             "performance": {
@@ -1036,7 +1225,7 @@ def main() -> None:
 
         except HookTimeoutError as e:
             # Enhanced timeout error handling
-            timeout_response: Dict[str, Any] = {
+            timeout_response: dict[str, Any] = {
                 "continue": True,
                 "systemMessage": "⚠️ Session start timeout - continuing without project info",
                 "error_details": {
@@ -1052,7 +1241,7 @@ def main() -> None:
 
         except Exception as e:
             # Enhanced error handling with context
-            error_response: Dict[str, Any] = {
+            error_response: dict[str, Any] = {
                 "continue": True,
                 "systemMessage": "⚠️ Session start encountered an error - continuing",
                 "error_details": {
@@ -1082,7 +1271,7 @@ def main() -> None:
 
             except PlatformTimeoutError:
                 # Timeout - return minimal valid response
-                timeout_response_legacy: Dict[str, Any] = {
+                timeout_response_legacy: dict[str, Any] = {
                     "continue": True,
                     "systemMessage": "⚠️ Session start timeout - continuing without project info",
                 }
@@ -1113,20 +1302,20 @@ def main() -> None:
                 sys.exit(0)
 
         except json.JSONDecodeError as e:
-            # JSON parse error
-            json_error_response: Dict[str, Any] = {
+            # JSON parse error - hookSpecificOutput not valid for SessionStart
+            json_error_response: dict[str, Any] = {
                 "continue": True,
-                "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
+                "systemMessage": f"⚠️ SessionStart JSON parse error: {e}",
             }
             print(json.dumps(json_error_response))
             print(f"SessionStart JSON parse error: {e}", file=sys.stderr)
             sys.exit(1)
 
         except Exception as e:
-            # Unexpected error
-            general_error_response: Dict[str, Any] = {
+            # Unexpected error - hookSpecificOutput not valid for SessionStart
+            general_error_response: dict[str, Any] = {
                 "continue": True,
-                "hookSpecificOutput": {"error": f"SessionStart error: {e}"},
+                "systemMessage": f"⚠️ SessionStart error: {e}",
             }
             print(json.dumps(general_error_response))
             print(f"SessionStart unexpected error: {e}", file=sys.stderr)

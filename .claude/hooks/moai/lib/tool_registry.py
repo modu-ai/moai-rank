@@ -11,13 +11,11 @@ Features:
 - Cross-platform support (macOS, Linux, Windows)
 """
 
-import shlex
 import shutil
 import subprocess
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 class ToolType(Enum):
@@ -36,16 +34,16 @@ class ToolConfig:
 
     name: str
     command: str
-    args: List[str] = field(default_factory=list)
+    args: list[str] = field(default_factory=list)
     file_args_position: str = "end"  # "end", "start", or "replace:{placeholder}"
-    check_args: List[str] = field(default_factory=list)  # Args to check if tool exists
-    fix_args: List[str] = field(default_factory=list)  # Args to auto-fix issues
-    extensions: List[str] = field(default_factory=list)
+    check_args: list[str] = field(default_factory=list)  # Args to check if tool exists
+    fix_args: list[str] = field(default_factory=list)  # Args to auto-fix issues
+    extensions: list[str] = field(default_factory=list)
     tool_type: ToolType = ToolType.FORMATTER
     priority: int = 1  # Lower = higher priority
     timeout_seconds: int = 30
     requires_config: bool = False  # Needs config file to work
-    config_files: List[str] = field(default_factory=list)  # e.g., ["pyproject.toml"]
+    config_files: list[str] = field(default_factory=list)  # e.g., ["pyproject.toml"]
 
 
 @dataclass
@@ -66,9 +64,9 @@ class ToolRegistry:
     """Registry for language tools (formatters, linters, etc.)."""
 
     def __init__(self) -> None:
-        self._tools: Dict[str, List[ToolConfig]] = {}
-        self._extension_map: Dict[str, str] = {}
-        self._tool_cache: Dict[str, bool] = {}
+        self._tools: dict[str, list[ToolConfig]] = {}
+        self._extension_map: dict[str, str] = {}
+        self._tool_cache: dict[str, bool] = {}
         self._register_default_tools()
 
     def _register_default_tools(self) -> None:
@@ -189,7 +187,7 @@ class ToolRegistry:
             ToolConfig(
                 name="biome-lint",
                 command="biome",
-                args=["lint", "--write"],
+                args=["lint", "--apply"],
                 extensions=js_extensions + ts_extensions,
                 tool_type=ToolType.LINTER,
                 priority=1,
@@ -684,14 +682,12 @@ class ToolRegistry:
 
         return False
 
-    def get_language_for_file(self, file_path: str) -> Optional[str]:
+    def get_language_for_file(self, file_path: str) -> str | None:
         """Get language identifier for a file path."""
         ext = Path(file_path).suffix.lower()
         return self._extension_map.get(ext)
 
-    def get_tools_for_language(
-        self, language: str, tool_type: Optional[ToolType] = None
-    ) -> List[ToolConfig]:
+    def get_tools_for_language(self, language: str, tool_type: ToolType | None = None) -> list[ToolConfig]:
         """Get available tools for a language, optionally filtered by type."""
         tools = self._tools.get(language, [])
 
@@ -702,37 +698,129 @@ class ToolRegistry:
         available_tools = [t for t in tools if self.is_tool_available(t.name)]
         return sorted(available_tools, key=lambda t: t.priority)
 
-    def get_tools_for_file(
-        self, file_path: str, tool_type: Optional[ToolType] = None
-    ) -> List[ToolConfig]:
+    def get_tools_for_file(self, file_path: str, tool_type: ToolType | None = None) -> list[ToolConfig]:
         """Get available tools for a specific file."""
         language = self.get_language_for_file(file_path)
         if not language:
             return []
         return self.get_tools_for_language(language, tool_type)
 
+    def _validate_file_path(self, file_path: str, cwd: str | None = None) -> str:
+        """Validate and sanitize file path to prevent injection attacks.
+
+        Security measures:
+        - Reject paths with null bytes
+        - Reject paths with shell metacharacters in dangerous positions
+        - Resolve and validate path is within allowed boundaries
+        - Ensure path exists and is a file
+
+        Args:
+            file_path: Path to validate
+            cwd: Working directory context
+
+        Returns:
+            Validated absolute path
+
+        Raises:
+            ValueError: If path is invalid or potentially dangerous
+        """
+
+        # Check for null bytes (common injection technique)
+        if "\x00" in file_path:
+            raise ValueError("Invalid file path: contains null byte")
+
+        # Check for shell metacharacters that could be dangerous
+        # These are dangerous in string interpolation contexts (like R code)
+        dangerous_chars = ["'", '"', "`", "$", ";", "&", "|", "\n", "\r"]
+        for char in dangerous_chars:
+            if char in file_path:
+                raise ValueError(f"Invalid file path: contains dangerous character '{repr(char)}'")
+
+        # Resolve path
+        try:
+            path = Path(file_path)
+            if not path.is_absolute():
+                base = Path(cwd) if cwd else Path.cwd()
+                path = (base / path).resolve()
+            else:
+                path = path.resolve()
+        except (OSError, ValueError) as e:
+            raise ValueError(f"Invalid file path: {e}") from e
+
+        # Ensure path exists and is a file
+        if not path.exists():
+            raise ValueError(f"File does not exist: {file_path}")
+        if not path.is_file():
+            raise ValueError(f"Path is not a file: {file_path}")
+
+        return str(path)
+
+    def _escape_for_code_string(self, value: str, language: str = "generic") -> str:
+        """Escape a string value for safe inclusion in code.
+
+        Args:
+            value: String to escape
+            language: Target language (r, python, generic)
+
+        Returns:
+            Escaped string safe for code inclusion
+        """
+        # Basic escaping for string literals
+        # Escape backslashes first, then quotes
+        escaped = value.replace("\\", "\\\\")
+
+        if language == "r":
+            # R uses single quotes, escape them
+            escaped = escaped.replace("'", "\\'")
+        else:
+            # Generic: escape both quote types
+            escaped = escaped.replace("'", "\\'")
+            escaped = escaped.replace('"', '\\"')
+
+        return escaped
+
     def run_tool(
         self,
         tool: ToolConfig,
         file_path: str,
-        cwd: Optional[str] = None,
-        extra_args: Optional[List[str]] = None,
+        cwd: str | None = None,
+        extra_args: list[str] | None = None,
     ) -> ToolResult:
-        """Run a tool on a file and return the result."""
+        """Run a tool on a file and return the result.
+
+        Security measures:
+        - Validates file path before execution
+        - Uses subprocess list mode (shell=False) to prevent shell injection
+        - Properly escapes paths for code interpolation contexts
+        """
         try:
+            # Validate file path first (security check)
+            try:
+                validated_path = self._validate_file_path(file_path, cwd)
+            except ValueError as e:
+                return ToolResult(
+                    success=False,
+                    tool_name=tool.name,
+                    error=f"Path validation failed: {e}",
+                    exit_code=-1,
+                )
+
             # Build command
             cmd = [tool.command] + tool.args
 
             # Add file path based on position
             if tool.file_args_position == "end":
-                cmd.append(file_path)
+                cmd.append(validated_path)
             elif tool.file_args_position == "start":
-                cmd.insert(1, file_path)
+                cmd.insert(1, validated_path)
             elif tool.file_args_position.startswith("replace:"):
+                # Handle code interpolation (e.g., R's styler::style_file)
                 placeholder = tool.file_args_position.split(":")[1]
-                # Use shlex.quote to prevent shell injection attacks
-                safe_path = shlex.quote(file_path)
-                cmd = [c.replace(placeholder, safe_path) for c in cmd]
+                # Escape path for safe code string inclusion
+                escaped_path = self._escape_for_code_string(validated_path, "r")
+                # Build function call: placeholder → placeholder('escaped_path')
+                replacement = f"{placeholder}('{escaped_path}')"
+                cmd = [c.replace(placeholder, replacement) for c in cmd]
 
             # Add extra args
             if extra_args:
@@ -797,7 +885,7 @@ class ToolRegistry:
 
 
 # Global registry instance
-_registry: Optional[ToolRegistry] = None
+_registry: ToolRegistry | None = None
 
 
 def get_tool_registry() -> ToolRegistry:
