@@ -54,7 +54,7 @@ const BatchSessionSchema = z.object({
   cacheReadTokens: z.number().int().min(0).max(MAX_CACHE_TOKENS).optional().default(0),
   // Vibe coding analytics fields
   startedAt: z.string().datetime().optional(),
-  durationSeconds: z.number().int().min(0).max(86400).optional(), // Max 24 hours
+  durationSeconds: z.number().int().min(0).max(604800).optional(), // Max 7 days
   turnCount: z.number().int().min(0).max(10000).optional(),
   toolUsage: z.record(z.string(), z.number().int().min(0)).optional(),
   codeMetrics: CodeMetricsSchema.optional(),
