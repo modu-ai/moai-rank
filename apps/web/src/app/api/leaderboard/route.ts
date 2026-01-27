@@ -10,7 +10,7 @@ import {
 } from '@/lib/api-response';
 import { checkPublicRateLimit, extractIpAddress } from '@/lib/rate-limiter';
 import { getPeriodStart } from '@/lib/date-utils';
-import { withCache } from '@/lib/cache';
+import { withCache, set as cacheSet } from '@/lib/cache';
 import { leaderboardKey } from '@/cache/keys';
 import { CACHE_TTL } from '@/cache/config';
 
@@ -85,10 +85,12 @@ export async function GET(request: NextRequest) {
 
     // Cache configuration
     const cacheKey = leaderboardKey(period, limit, offset);
-    const ttl = CACHE_TTL.LEADERBOARD[period];
+    const defaultTtl = CACHE_TTL.LEADERBOARD[period];
+    // Use short TTL (5 min) for empty results so data appears quickly once available
+    const EMPTY_RESULT_TTL = 5 * 60;
 
     // Fetch data with caching
-    const result = await withCache(cacheKey, ttl, async () => {
+    const result = await withCache(cacheKey, defaultTtl, async () => {
       // Query rankings with user info
       const rankingsData = await db
         .select({
@@ -134,6 +136,11 @@ export async function GET(request: NextRequest) {
 
       return { entries, pagination };
     });
+
+    // Re-cache with short TTL if result is empty, so data appears quickly once available
+    if (result.entries.length === 0 && defaultTtl > EMPTY_RESULT_TTL) {
+      await cacheSet(cacheKey, result, EMPTY_RESULT_TTL);
+    }
 
     return paginatedResponse(result.entries, result.pagination);
   } catch (error) {

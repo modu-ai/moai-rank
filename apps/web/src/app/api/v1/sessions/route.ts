@@ -212,6 +212,10 @@ export async function POST(request: NextRequest) {
     const sessionData = parseResult.data;
 
     // V003: Session frequency validation - minimum time between sessions
+    // Compare the submitted session's endedAt against the latest session in DB,
+    // rather than comparing against Date.now(). This allows historical session sync
+    // while still preventing duplicate/overlapping sessions.
+    const submittedEndedAt = new Date(sessionData.endedAt);
     const lastSession = await db
       .select({ endedAt: sessions.endedAt })
       .from(sessions)
@@ -221,16 +225,17 @@ export async function POST(request: NextRequest) {
 
     if (
       lastSession.length > 0 &&
-      Date.now() - lastSession[0].endedAt.getTime() < MIN_SESSION_INTERVAL_MS
+      Math.abs(submittedEndedAt.getTime() - lastSession[0].endedAt.getTime()) < MIN_SESSION_INTERVAL_MS
     ) {
       await logSecurityEvent('suspicious_activity', user.id, {
-        reason: 'Session submitted too soon',
+        reason: 'Session endedAt too close to existing session',
         lastSessionEndedAt: lastSession[0].endedAt.toISOString(),
-        timeSinceLastSession: Date.now() - lastSession[0].endedAt.getTime(),
+        submittedEndedAt: submittedEndedAt.toISOString(),
+        timeDifference: Math.abs(submittedEndedAt.getTime() - lastSession[0].endedAt.getTime()),
         minimumInterval: MIN_SESSION_INTERVAL_MS,
       });
       return Errors.validationError(
-        'Session submitted too soon after previous session. Please wait at least 1 minute.'
+        'Session endedAt is too close to an existing session. Sessions must be at least 1 minute apart.'
       );
     }
 

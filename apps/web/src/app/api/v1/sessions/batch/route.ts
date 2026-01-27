@@ -24,7 +24,6 @@ const MAX_BATCH_SIZE = 100;
 const MAX_INPUT_TOKENS = 50_000_000;
 const MAX_OUTPUT_TOKENS = 10_000_000;
 const MAX_CACHE_TOKENS = 100_000_000;
-const SESSION_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
 
 /**
  * Code metrics schema for vibe coding analytics
@@ -38,22 +37,16 @@ const CodeMetricsSchema = z.object({
 
 /**
  * Single session schema for batch
+ *
+ * NOTE: endedAt has NO timestamp tolerance for batch API.
+ * Batch submissions are authenticated via API key + HMAC, so replay protection
+ * is handled by serverSessionHash deduplication instead of timestamp validation.
+ * This allows historical session sync (e.g., `moai rank sync`).
  */
 const BatchSessionSchema = z.object({
   sessionHash: z.string().length(64, 'Invalid session hash'),
   anonymousProjectId: z.string().max(16).optional(),
-  endedAt: z
-    .string()
-    .datetime()
-    .refine(
-      (val) => {
-        const sessionDate = new Date(val);
-        const now = Date.now();
-        const timeDiff = Math.abs(sessionDate.getTime() - now);
-        return timeDiff <= SESSION_TIMESTAMP_TOLERANCE_MS;
-      },
-      { message: 'Session endedAt must be within 5 minutes of current time' }
-    ),
+  endedAt: z.string().datetime(),
   modelName: z.string().max(50).optional(),
   inputTokens: z.number().int().min(0).max(MAX_INPUT_TOKENS),
   outputTokens: z.number().int().min(0).max(MAX_OUTPUT_TOKENS),

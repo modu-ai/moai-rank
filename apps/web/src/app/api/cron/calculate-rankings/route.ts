@@ -3,7 +3,7 @@ import { db, getPooledDb, users, dailyAggregates, rankings, tokenUsage } from '@
 import { eq, sql, gte, and } from 'drizzle-orm';
 import { successResponse, Errors } from '@/lib/api-response';
 import { calculateCompositeScore, calculateEfficiencyScore } from '@/lib/score';
-import { getPeriodStart } from '@/lib/date-utils';
+import { getPeriodStart, getPeriodEnd } from '@/lib/date-utils';
 import { delPattern } from '@/lib/cache';
 
 /**
@@ -117,9 +117,12 @@ async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCa
   yesterday.setHours(0, 0, 0, 0);
 
   const periodStart = getPeriodStart(period, yesterday);
+  const periodEnd = getPeriodEnd(period, yesterday);
   const now = yesterday; // Use yesterday for updatedAt timestamp
 
   // Get all users with their token usage for this period
+  // Uses both lower bound (periodStart) and upper bound (periodEnd) to ensure
+  // each period captures exactly its own data without overlap.
   const userStats = await db
     .select({
       userId: users.id,
@@ -132,7 +135,12 @@ async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCa
       tokenUsage,
       and(
         eq(tokenUsage.userId, users.id),
-        period === 'all_time' ? sql`1=1` : gte(tokenUsage.recordedAt, new Date(periodStart))
+        period === 'all_time'
+          ? sql`1=1`
+          : and(
+              gte(tokenUsage.recordedAt, new Date(periodStart)),
+              sql`${tokenUsage.recordedAt} < ${new Date(periodEnd)}`
+            )
       )
     )
     .groupBy(users.id)

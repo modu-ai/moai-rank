@@ -46,3 +46,53 @@ export function getPeriodStart(period: string, baseDate?: Date): string {
       return start.toISOString().split('T')[0];
   }
 }
+
+/**
+ * Get the exclusive end date of a period for ranking queries.
+ *
+ * Returns the day AFTER the period ends, for use with `< periodEnd` conditions.
+ * This ensures each period captures exactly its own data without overlap.
+ *
+ * @param period - The time period: 'daily' | 'weekly' | 'monthly' | 'all_time'
+ * @param baseDate - Optional base date for calculation (defaults to today)
+ * @returns ISO date string (YYYY-MM-DD format), exclusive upper bound
+ *
+ * @example
+ * // Daily: next day
+ * getPeriodEnd('daily', new Date('2026-01-26')) // '2026-01-27'
+ *
+ * @example
+ * // Weekly: next Monday
+ * getPeriodEnd('weekly', new Date('2026-01-26')) // '2026-02-02'
+ */
+export function getPeriodEnd(period: string, baseDate?: Date): string {
+  const now = baseDate ?? new Date();
+  const end = new Date(now);
+  end.setHours(0, 0, 0, 0);
+
+  switch (period) {
+    case 'daily':
+      end.setDate(end.getDate() + 1);
+      return end.toLocaleDateString('en-CA');
+
+    case 'weekly': {
+      // Find Monday of current week, then add 7 days
+      const day = end.getDay();
+      const diff = end.getDate() - day + (day === 0 ? -6 : 1);
+      end.setDate(diff + 7);
+      return end.toLocaleDateString('en-CA');
+    }
+
+    case 'monthly':
+      end.setMonth(end.getMonth() + 1);
+      end.setDate(1);
+      return end.toLocaleDateString('en-CA');
+
+    case 'all_time':
+      return '2099-12-31'; // Far future for all-time
+
+    default:
+      end.setDate(end.getDate() + 1);
+      return end.toISOString().split('T')[0];
+  }
+}
