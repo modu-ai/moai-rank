@@ -1,22 +1,24 @@
 ---
-name: "moai-formats-data"
-description: "Data format specialist covering TOON encoding, JSON/YAML optimization, serialization patterns, and data validation for modern applications. Use when optimizing data for LLM transmission, implementing high-performance serialization, validating data schemas, or converting between data formats."
-version: 2.0.0
-category: "library"
-modularized: true
+name: moai-formats-data
+description: >
+  Data format specialist covering TOON encoding, JSON/YAML optimization,
+  serialization patterns, and data validation for modern applications. Use when
+  optimizing data for LLM transmission, implementing high-performance
+  serialization, validating data schemas, or converting between data formats.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Edit Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
-tags: ['formats', 'data', 'toon', 'serialization', 'validation', 'optimization']
-updated: 2026-01-11
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-status: "active"
-author: "MoAI-ADK Team"
+metadata:
+  version: "2.0.0"
+  category: "library"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "true"
+  tags: "formats, data, toon, serialization, validation, optimization"
+  author: "MoAI-ADK Team"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["serialization", "data format", "json", "yaml", "toon", "validation", "schema", "optimization"]
 ---
@@ -150,7 +152,7 @@ Core Implementation Modules:
 
 Supporting Files:
 
-- modules/README.md - Module overview and integration patterns
+- modules/INDEX.md - Module overview and integration patterns
 - reference.md - Extended reference documentation
 - examples.md - Complete working examples
 

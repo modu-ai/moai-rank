@@ -12,13 +12,22 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-# Import TimeoutError from lib.timeout (canonical definition)
+# Import yaml with helpful error message
 try:
-    from lib.timeout import TimeoutError  # noqa: F401
+    import yaml
+except ImportError as e:
+    raise ImportError(
+        "PyYAML is required for MoAI-ADK hooks. "
+        "Install with: pip install pyyaml\n"
+        f"Or use: uv run --with pyyaml <hook_script>\n"
+        f"Original error: {e}"
+    ) from e
+
+# Import TimeoutError from lib.unified_timeout_manager (canonical definition)
+try:
+    from lib.unified_timeout_manager import TimeoutError  # noqa: F401
 except ImportError:
-    # Fallback if lib.timeout not available
+    # Fallback if unified_timeout_manager not available
     class TimeoutError(Exception):  # type: ignore[no-redef]
         """Signal-based timeout exception"""
 

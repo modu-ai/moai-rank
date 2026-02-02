@@ -1,33 +1,35 @@
 ---
-name: "moai-workflow-worktree"
-description: "Git worktree management for parallel SPEC development with isolated workspaces, automatic registration, and seamless MoAI-ADK integration"
-version: 1.1.0
-category: "workflow"
-modularized: true
+name: moai-workflow-worktree
+description: >
+  Git worktree management for parallel SPEC development with isolated workspaces,
+  automatic branch registration, and seamless MoAI-ADK integration.
+  Use when setting up parallel development environments, creating isolated SPEC
+  workspaces, managing git worktrees, or working on multiple features simultaneously.
+  Do NOT use for regular git operations like commit or merge
+  (use manager-git agent instead).
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
-tags: ['git', 'worktree', 'parallel', 'development', 'spec', 'isolation']
-updated: 2026-01-08
-status: "active"
+metadata:
+  version: "1.1.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-01-08"
+  modularized: "true"
+  tags: "git, worktree, parallel, development, spec, isolation"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords: ["worktree", "git worktree", "parallel development", "isolated workspace", "multiple SPECs", "branch isolation", "feature branch"]
   phases: ["plan", "run"]
   agents: ["manager-git", "manager-spec", "manager-project"]
-
-allowed-tools:
-  - Read
-  - Write
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 ---
 
 # MoAI Worktree Management

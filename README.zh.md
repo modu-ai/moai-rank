@@ -39,7 +39,7 @@ MoAI Rank 的创建目的如下：
 
 **开发特征**：
 
-- 使用 MoAI-ADK 的 `/moai:alfred` `/moai:loop` 完全自主自动化命令实现核心功能
+- 使用 MoAI-ADK 的 `/moai` 统一自主自动化命令实现核心功能
 - 混合使用 GLM 4.7 和 Claude Opus 进行成本效益开发
 - Worktree 并行开发同时开发独立功能模块
 

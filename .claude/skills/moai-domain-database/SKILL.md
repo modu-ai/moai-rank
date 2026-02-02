@@ -1,23 +1,26 @@
 ---
-name: "moai-domain-database"
-description: "Database specialist covering PostgreSQL, MongoDB, Redis, Oracle, and advanced data patterns for modern applications"
-version: 1.0.0
-category: "domain"
-modularized: true
+name: moai-domain-database
+description: >
+  Database specialist covering PostgreSQL, MongoDB, Redis, Oracle, and
+  advanced data patterns for modern applications.
+  Use when user asks about database schema design, query optimization, indexing strategies,
+  data modeling, migrations, ORM configuration, or database performance tuning.
+  Do NOT use for API design or server-side business logic
+  (use moai-domain-backend instead).
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Edit Bash(psql:*) Bash(mysql:*) Bash(sqlite3:*) Bash(mongosh:*) Bash(redis-cli:*) Bash(npm:*) Bash(npx:*) Bash(prisma:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
-tags: ['database', 'postgresql', 'mongodb', 'redis', 'oracle', 'data-patterns', 'performance']
-updated: 2026-01-11
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-status: "active"
-author: "MoAI-ADK Team"
+metadata:
+  version: "1.0.0"
+  category: "domain"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "true"
+  tags: "database, postgresql, mongodb, redis, oracle, data-patterns, performance"
+  author: "MoAI-ADK Team"
+
+# MoAI Extension: Triggers
 triggers:
   keywords:
     - database

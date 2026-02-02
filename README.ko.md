@@ -39,7 +39,7 @@ MoAI Rank는 다음과 같은 학습 목적으로 만들어졌습니다:
 
 **제작 특징**:
 
-- MoAI-ADK의 `/moai:alfred` `/moai:loop` 명령어로 완전 자율 자동화 명령어로 핵심 기능 구현
+- MoAI-ADK의 `/moai` 통합 자율 자동화 명령어로 핵심 기능 구현
 - GLM 4.7과 Claude Opus를 하이브리드로 활용한 비용 효율적 개발
 - Worktree 병렬 개발로 독립된 기능 모듈 동시 개발
 

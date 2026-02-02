@@ -1,23 +1,24 @@
 ---
-name: "moai-platform-neon"
-description: "Neon serverless PostgreSQL specialist covering auto-scaling, database branching, PITR, and connection pooling. Use when building serverless apps needing PostgreSQL, implementing preview environments, or optimizing database costs."
-version: 2.1.0
-category: "platform"
-modularized: true
+name: moai-platform-neon
+description: >
+  Neon serverless PostgreSQL specialist covering auto-scaling, database branching, PITR,
+  and connection pooling. Use when building serverless apps needing PostgreSQL, implementing
+  preview environments, or optimizing database costs.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Bash(psql:*) Bash(npm:*) Bash(npx:*) Bash(neonctl:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
-tags: ['neon', 'postgresql', 'serverless', 'branching', 'auto-scaling']
-context7-libraries: ['/neondatabase/neon']
-related-skills: ['moai-platform-supabase', 'moai-lang-typescript', 'moai-domain-database']
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Write
-  - Bash
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+metadata:
+  version: "2.1.0"
+  category: "platform"
+  modularized: "true"
+  status: "active"
+  updated: "2026-01-11"
+  tags: "neon, postgresql, serverless, branching, auto-scaling"
+  context7-libraries: "/neondatabase/neon"
+  related-skills: "moai-platform-supabase, moai-lang-typescript, moai-domain-database"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["neon", "serverless", "postgresql", "database branching", "auto-scaling", "pitr", "connection pooling"]
 ---

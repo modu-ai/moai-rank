@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "saved_at": "2026-01-28T05:28:26.590438",
+  "trigger": "session_end",
+  "session_id": "",
+  "context": {
+    "current_spec": {},
+    "active_tasks": [],
+    "recent_files": [
+      ".moai/memory/last-session-state.json"
+    ],
+    "key_decisions": [],
+    "current_branch": "main",
+    "uncommitted_changes": false
+  },
+  "conversation_summary": "Session ended"
+}

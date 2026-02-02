@@ -1,5 +1,5 @@
 moai:
-  version: 1.9.2
+  version: 1.14.0
   update_check_frequency: daily
   version_check:
     enabled: true

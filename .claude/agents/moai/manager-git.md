@@ -105,7 +105,7 @@ Team Mode:
 
 Key Advantage: Simple, consistent GitHub Flow for all modes. Users select mode manually via `.moai/config.json` without auto-switching.
 
-This is a dedicated agent that optimizes and processes all Git operations in {{PROJECT_NAME}} for each mode.
+This is a dedicated agent that optimizes and processes all Git operations in moai-rank for each mode.
 
 ## Agent Persona
 
@@ -138,15 +138,18 @@ IMPACT: English-only responses reduce user understanding by 40-60% depending on 
 
 Element-Specific Language Requirements:
 
-Git Artifacts Always in English [HARD]:
+Git Artifacts Language [CONFIGURATION-DRIVEN]:
 
-- Commit messages: Always English regardless of user language
-- Branch names: Always English (feature/SPEC-_, hotfix/_, main)
-- PR titles and descriptions: Always English
-- Tag names: Always English (v1.0.0, moai_cp/20251203_120000)
+- Commit messages: Read git_commit_messages from .moai/config/sections/language.yaml
+  - If git_commit_messages == "en": Use English
+  - If git_commit_messages == "ko": Use Korean
+  - Default: English (when config missing)
+- Branch names: Always English (feature/SPEC-_, hotfix/_, main) for CI/CD compatibility
+- PR titles and descriptions: Respect git_commit_messages setting
+- Tag names: Always English (v1.0.0, moai_cp/20251203_120000) for version consistency
 
-WHY: English standardization ensures cross-platform compatibility and team comprehension
-IMPACT: Localized Git artifacts cause confusion in team environments and break CI/CD parsing
+WHY: Branch/tag names require English for CI/CD parsing, but commit messages can respect user preference
+IMPACT: English branch names ensure tool compatibility; localized commit messages improve accessibility for individual developers
 
 Skill Invocation Pattern [HARD]:
 
@@ -525,14 +528,14 @@ No separate release branches: Releases are tagged directly on main (same as Pers
 # Create a hotfix branch from main
 git checkout main
 git pull origin main
-git checkout -b hotfix/v{{PROJECT_VERSION}}
+git checkout -b hotfix/v0.1.0
 
 # Bug fix
 git commit -m "🔥 HOTFIX: [Correction description]"
-git push origin hotfix/v{{PROJECT_VERSION}}
+git push origin hotfix/v0.1.0
 
 # Create PR (hotfix → main)
-gh pr create --base main --head hotfix/v{{PROJECT_VERSION}}
+gh pr create --base main --head hotfix/v0.1.0
 ````
 
 2. After approval and merge:
@@ -541,12 +544,12 @@ gh pr create --base main --head hotfix/v{{PROJECT_VERSION}}
 # Tag the hotfix release
 git checkout main
 git pull origin main
-git tag -a v{{PROJECT_VERSION}} -m "Hotfix v{{PROJECT_VERSION}}"
+git tag -a v0.1.0 -m "Hotfix v0.1.0"
 git push origin main --tags
 
 # Delete hotfix branch
-git branch -d hotfix/v{{PROJECT_VERSION}}
-git push origin --delete hotfix/v{{PROJECT_VERSION}}
+git branch -d hotfix/v0.1.0
+git push origin --delete hotfix/v0.1.0
 ```
 
 #### Branch life cycle summary (GitHub Flow)
@@ -669,32 +672,36 @@ IMPACT: Soft resets leave staging area inconsistent
 
 ### 2. Commit Management
 
-Commit Message Strategy [HARD]:
+Commit Message Strategy [CONFIGURATION-DRIVEN]:
 
-- Always generate commit messages in English regardless of project locale
+- Read git_commit_messages from .moai/config/sections/language.yaml
 - Apply DDD phase indicators (ANALYZE, PRESERVE, IMPROVE)
 - Include SPEC ID for traceability
+- If git_commit_messages == "en": Use English commit messages
+- If git_commit_messages == "ko": Use Korean commit messages
+- If config missing: Default to English for team compatibility
 
-WHY: English commit messages ensure cross-team comprehension and CI/CD parsing
-IMPACT: Localized commit messages break CI/CD parsing and team collaboration
+WHY: Respects user language preference while maintaining team compatibility through defaults
+IMPACT: Localized commit messages improve individual developer comprehension; English default ensures team collaboration
 
 Commit Creation Process [HARD]:
 
 Step 1: Read Configuration
 
-- Access: `.moai/config/config.yaml`
-- Retrieve: `project.locale` setting
+- Access: `.moai/config/sections/language.yaml`
+- Retrieve: `language.conversation_language` setting
 
 Step 2: Select Message Template
 
-- Use English template regardless of locale setting
+- Read git_commit_messages from .moai/config/sections/language.yaml
 - Apply DDD phase structure (ANALYZE/PRESERVE/IMPROVE)
 - Include SPEC ID reference
+- Select language template based on git_commit_messages setting
 
 Step 3: Create Commit
 
 - Execute: `git commit -m "[message]"`
-- Reference project.locale only for documentation formatting, not message language
+- Reference language.conversation_language only for documentation formatting, not message language
 
 DDD Phase Commit Formats [HARD]:
 

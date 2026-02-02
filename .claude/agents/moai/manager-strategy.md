@@ -8,10 +8,10 @@ description: |
   KO: 전략, 구현계획, 아키텍처결정, 기술평가, 계획
   JA: 戦略, 実装計画, アーキテクチャ決定, 技術評価
   ZH: 策略, 实施计划, 架构决策, 技术评估
-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__memory__*
+tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-memory, moai-foundation-philosopher, moai-workflow-spec, moai-workflow-project, moai-workflow-worktree, moai-lang-python, moai-lang-typescript
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-workflow-spec, moai-workflow-project, moai-workflow-worktree, moai-lang-python, moai-lang-typescript
 ---
 
 # Implementation Planner - Implementation Strategist
@@ -233,7 +233,7 @@ When analyzing SPEC documents, core-planner automatically detects domain-specifi
 | code-backend  | 'backend', 'api', 'server', 'database', 'microservice', 'deployment', 'authentication'                                                                          | SPEC requires server-side architecture, API design, or database schema                    | Backend architecture guide, API contract design                      |
 | code-frontend | 'frontend', 'ui', 'page', 'component', 'client-side', 'browser', 'web interface'                                                                                | SPEC requires client-side UI, component design, or state management                       | Component architecture, state management strategy                    |
 | infra-devops  | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws'                                                         | SPEC requires deployment automation, containerization, or CI/CD                           | Deployment strategy, infrastructure-as-code templates                |
-| design-uiux   | 'design', 'ux', 'ui', 'accessibility', 'a11y', 'user experience', 'wireframe', 'prototype', 'design system', 'figma', 'user research', 'persona', 'journey map' | SPEC requires UX design, design systems, accessibility audit, or design-to-code workflows | Design system architecture, accessibility audit, Figma-to-code guide |
+| design-uiux   | 'design', 'ux', 'ui', 'accessibility', 'a11y', 'user experience', 'wireframe', 'prototype', 'design system', 'pencil', 'user research', 'persona', 'journey map' | SPEC requires UX design, design systems, accessibility audit, or design-to-code workflows | Design system architecture, accessibility audit, Pencil-to-code guide |
 
 ### Proactive Delegation Workflow
 
@@ -279,7 +279,7 @@ SPEC Keywords Detected: ['frontend', 'backend', 'deployment', 'api']
 
 Example 3: Design System Implementation
 ───────────────────────────────────────
-SPEC Keywords Detected: ['design system', 'accessibility', 'component', 'figma', 'a11y']
+SPEC Keywords Detected: ['design system', 'accessibility', 'component', 'pencil', 'a11y']
 → Delegate to: design-uiux (for design system + accessibility)
 → Delegate to: code-frontend (for component implementation)
 ```

@@ -1,23 +1,28 @@
 ---
-name: "moai-tool-ast-grep"
-description: "AST-based structural code search, security scanning, and refactoring using ast-grep (sg CLI). Supports 40+ languages with pattern matching and code transformation."
-version: 1.2.0
-category: "tool"
-modularized: true
+name: moai-tool-ast-grep
+description: >
+  AST-based structural code search, security scanning, and refactoring using ast-grep
+  (sg CLI) with pattern matching and code transformation across 40+ languages.
+  Use when performing structural code search, AST-based refactoring, codemod operations,
+  security pattern scanning, or syntax-aware code transformations across files.
+  Do NOT use for simple text search (use Grep tool instead)
+  or full codebase exploration (use Explore agent instead).
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob Bash(sg:*) Bash(ast-grep:*) mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
-context: fork
-agent: Explore
-tags: ['ast', 'refactoring', 'code-search', 'lint', 'structural-search', 'security', 'codemod']
-related-skills: ['moai-workflow-testing', 'moai-foundation-quality', 'moai-domain-backend', 'moai-domain-frontend']
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+metadata:
+  version: "1.2.0"
+  category: "tool"
+  modularized: "true"
+  status: "active"
+  updated: "2026-01-11"
+  tags: "ast, refactoring, code-search, lint, structural-search, security, codemod"
+  related-skills: "moai-workflow-testing, moai-foundation-quality, moai-domain-backend, moai-domain-frontend"
+  context: "fork"
+  agent: "Explore"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["ast", "refactoring", "code search", "lint", "structural search", "security", "codemod", "ast-grep"]
 ---

@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
-import { db, getPooledDb, users, dailyAggregates, rankings, tokenUsage } from '@/db';
-import { eq, sql, gte, and } from 'drizzle-orm';
+import { db, getPooledDb, dailyAggregates, rankings, tokenUsage } from '@/db';
+import { sql, gte, and } from 'drizzle-orm';
 import { successResponse, Errors } from '@/lib/api-response';
 import { calculateCompositeScore, calculateEfficiencyScore } from '@/lib/score';
 import { getPeriodStart, getPeriodEnd } from '@/lib/date-utils';

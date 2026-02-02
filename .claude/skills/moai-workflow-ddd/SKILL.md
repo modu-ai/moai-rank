@@ -1,36 +1,27 @@
 ---
-name: "moai-workflow-ddd"
-description: "Domain-Driven Development workflow specialist using ANALYZE-PRESERVE-IMPROVE cycle for behavior-preserving code transformation"
-version: 1.0.0
-category: "workflow"
-modularized: true
+name: moai-workflow-ddd
+description: >
+  Domain-Driven Development workflow specialist using ANALYZE-PRESERVE-IMPROVE
+  cycle for behavior-preserving code transformation.
+  Use when refactoring legacy code, improving code structure without functional changes,
+  reducing technical debt, or performing API migration with behavior preservation.
+  Do NOT use for writing new tests (use moai-workflow-testing instead)
+  or creating new features from scratch (use expert-backend or expert-frontend instead).
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Edit Bash(git:*) Bash(pytest:*) Bash(ruff:*) Bash(npm:*) Bash(npx:*) Bash(node:*) Bash(uv:*) Bash(make:*) Bash(cargo:*) Bash(go:*) Bash(mix:*) Bash(bundle:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
-context: fork
-agent: manager-ddd
-tags:
-  [
-    "workflow",
-    "refactoring",
-    "ddd",
-    "domain-driven",
-    "behavior-preservation",
-    "ast-grep",
-    "characterization-tests",
-  ]
-related-skills:
-  ["moai-tool-ast-grep", "moai-workflow-testing", "moai-foundation-quality"]
-updated: 2026-01-16
-status: "active"
-author: "MoAI-ADK Team"
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+metadata:
+  version: "1.0.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-01-16"
+  modularized: "true"
+  tags: "workflow, refactoring, ddd, domain-driven, behavior-preservation, ast-grep, characterization-tests"
+  author: "MoAI-ADK Team"
+  context: "fork"
+  agent: "manager-ddd"
+  related-skills: "moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality"
 ---
 
 # Domain-Driven Development (DDD) Workflow

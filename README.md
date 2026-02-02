@@ -39,7 +39,7 @@ This project was intensively built using MoAI-ADK over 48 hours. A practical exa
 
 **Development Characteristics**:
 
-- Core functionality implemented using MoAI-ADK's `/moai:alfred` `/moai:loop` fully autonomous automation commands
+- Core functionality implemented using MoAI-ADK's `/moai` unified autonomous automation command
 - Cost-effective development using GLM 4.7 and Claude Opus in hybrid
 - Worktree parallel development for simultaneous development of independent functional modules
 

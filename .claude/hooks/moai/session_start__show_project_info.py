@@ -23,6 +23,13 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+
+# Ensure UTF-8 output on Windows (cp949/cp1252 cannot encode emoji)
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 from typing import Any
 
 # =============================================================================
@@ -74,38 +81,18 @@ if str(LIB_DIR) not in sys.path:
 from lib.file_utils import check_file_size  # noqa: E402
 from lib.path_utils import find_project_root  # noqa: E402
 
-# Import context manager for session continuity
-try:
-    from lib.context_manager import (
-        archive_context_snapshot,
-        format_context_for_injection,
-        load_context_snapshot,
-    )
-
-    HAS_CONTEXT_MANAGER = True
-except ImportError:
-    HAS_CONTEXT_MANAGER = False
-
-    def load_context_snapshot(project_root):
-        return None
-
-    def format_context_for_injection(snapshot, language="en"):
-        return ""
-
-    def archive_context_snapshot(project_root):
-        return True
-
-
 # Import unified timeout manager and Git operations manager
 try:
     from lib.git_operations_manager import GitOperationType, get_git_manager
-    from lib.timeout import TimeoutError as PlatformTimeoutError
     from lib.unified_timeout_manager import (
         HookTimeoutConfig,
         HookTimeoutError,
         TimeoutPolicy,
         get_timeout_manager,
         hook_timeout_context,
+    )
+    from lib.unified_timeout_manager import (
+        TimeoutError as PlatformTimeoutError,
     )
 except ImportError:
     # Fallback implementations if new modules not available
@@ -865,7 +852,9 @@ def load_user_personalization() -> dict:
                 "resolved_at": datetime.now().isoformat(),
                 "config_source": config.get("config_source", "default"),
             }
-            personalization_cache_file.write_text(json.dumps(cache_data, ensure_ascii=False, indent=2))
+            personalization_cache_file.write_text(
+                json.dumps(cache_data, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
 
         except (OSError, PermissionError):
             # Cache write errors are non-critical
@@ -895,15 +884,13 @@ def load_user_personalization() -> dict:
         has_valid_name = user_name and not user_name.startswith("{{") and not user_name.endswith("}}")
 
         # Get language name
+        # System provides 4 languages: ko, en, ja, zh
+        # Language names are defined in .moai/config/sections/language.yaml
         lang_name_map = {
             "ko": "Korean",
             "en": "English",
             "ja": "Japanese",
             "zh": "Chinese",
-            "es": "Spanish",
-            "fr": "French",
-            "de": "German",
-            "ru": "Russian",
         }
         lang_name = lang_name_map.get(conversation_lang, "Unknown")
 
@@ -929,7 +916,10 @@ def load_user_personalization() -> dict:
         personalization_cache_file = find_project_root() / ".moai" / "cache" / "personalization.json"
         try:
             personalization_cache_file.parent.mkdir(parents=True, exist_ok=True)
-            personalization_cache_file.write_text(json.dumps(personalization, ensure_ascii=False, indent=2))
+            personalization_cache_file.write_text(
+                json.dumps(personalization, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
         except (OSError, PermissionError):
             # Cache write errors are non-critical
             pass
@@ -994,12 +984,12 @@ def format_session_output() -> str:
 
     if personalization.get("needs_setup", False):
         # Show setup guidance (based on conversation_language)
-        # Guide user to generate project documentation with /moai:0-project
+        # Guide user to generate project documentation with /moai project
         setup_messages = {
-            "ko": "   👋 환영합니다! '/moai:0-project' 명령어로 프로젝트 문서를 생성해주세요",
-            "ja": "   👋 ようこそ！'/moai:0-project' コマンドでプロジェクトドキュメントを生成してください",
-            "zh": "   👋 欢迎！请运行 '/moai:0-project' 命令生成项目文档",
-            "en": "   👋 Welcome! Please run '/moai:0-project' to generate project documentation",
+            "ko": "   👋 환영합니다! '/moai project' 명령어로 프로젝트 문서를 생성해주세요",
+            "ja": "   👋 ようこそ！'/moai project' コマンドでプロジェクトドキュメントを生成してください",
+            "zh": "   👋 欢迎！请运行 '/moai project' 命令生成项目文档",
+            "en": "   👋 Welcome! Please run '/moai project' to generate project documentation",
         }
         output.append(setup_messages.get(conv_lang, setup_messages["en"]))
     elif personalization["has_personalization"]:
@@ -1021,59 +1011,6 @@ def format_session_output() -> str:
 
     # Configuration source is now handled silently for cleaner output
     # Users can check configuration using dedicated tools if needed
-
-    # Check for previous session context (session continuity feature)
-    if HAS_CONTEXT_MANAGER:
-        try:
-            project_root = find_project_root()
-            snapshot = load_context_snapshot(project_root)
-
-            if snapshot:
-                # Format and append previous context
-                context_message = format_context_for_injection(snapshot, conv_lang)
-                if context_message:
-                    output.append(context_message)
-
-                # Archive the snapshot after loading (move to archive)
-                archive_context_snapshot(project_root)
-
-            # Check for Memory MCP payload (generated by PreCompact hook)
-            mcp_payload_path = project_root / ".moai" / "memory" / "mcp-payload.json"
-            if mcp_payload_path.exists():
-                output.append("\n[MEMORY_MCP_SYNC] .moai/memory/mcp-payload.json available for Memory MCP sync")
-
-            # Check for SPEC state (available even without full snapshot)
-            if not snapshot:
-                spec_state_path = project_root / ".moai" / "memory" / "spec-state.json"
-                if spec_state_path.exists():
-                    try:
-                        spec_state = json.loads(spec_state_path.read_text(encoding="utf-8"))
-                        active_spec = spec_state.get("active_spec", {})
-                        if active_spec.get("id"):
-                            spec_id = active_spec.get("id", "")
-                            phase = active_spec.get("phase", "")
-                            progress = active_spec.get("progress_percent", 0)
-                            output.append(f"\n[SPEC_STATE] {spec_id} | {phase} | {progress}%")
-                    except (json.JSONDecodeError, OSError):
-                        pass
-
-            # Check for tasks backup (available even without full snapshot)
-            if not snapshot:
-                tasks_path = project_root / ".moai" / "memory" / "tasks-backup.json"
-                if tasks_path.exists():
-                    try:
-                        tasks_data = json.loads(tasks_path.read_text(encoding="utf-8"))
-                        task_list = tasks_data.get("tasks", [])
-                        if task_list:
-                            active = [t for t in task_list if t.get("status") in ("in_progress", "pending")]
-                            if active:
-                                output.append(f"[TASKS_BACKUP] {len(active)} active tasks found in backup")
-                    except (json.JSONDecodeError, OSError):
-                        pass
-
-        except Exception as e:
-            # Non-critical error - just log and continue
-            logging.warning(f"Failed to load previous context: {e}")
 
     return "\n".join(output)
 
@@ -1111,87 +1048,6 @@ def main() -> None:
 
     def execute_session_start():
         """Execute session start logic with proper error handling"""
-        # Read JSON payload from stdin
-        input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
-        payload = json.loads(input_data) if input_data.strip() else {}
-
-        # Detect /clear: save context from transcript before restoration
-        source = payload.get("source", "")
-        transcript_path = payload.get("transcript_path", "")
-        if source == "clear" and transcript_path and HAS_CONTEXT_MANAGER:
-            try:
-                from lib.context_manager import (
-                    parse_transcript_context,
-                    save_context_snapshot,
-                    save_spec_state,
-                    save_tasks_backup,
-                )
-
-                project_root = find_project_root()
-                transcript_data = parse_transcript_context(transcript_path)
-
-                # Build context from transcript
-                context = {
-                    "current_spec": transcript_data.get("current_spec", {}),
-                    "active_tasks": transcript_data.get("active_tasks", []),
-                    "recent_files": transcript_data.get("recent_files", []),
-                    "key_decisions": transcript_data.get("key_decisions", []),
-                    "current_branch": "",
-                    "uncommitted_changes": False,
-                }
-
-                # Fill git info
-                try:
-                    branch_result = subprocess.run(
-                        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                        capture_output=True,
-                        text=True,
-                        timeout=3,
-                        cwd=str(project_root),
-                    )
-                    if branch_result.returncode == 0:
-                        context["current_branch"] = branch_result.stdout.strip()
-                    status_result = subprocess.run(
-                        ["git", "status", "--porcelain"],
-                        capture_output=True,
-                        text=True,
-                        timeout=3,
-                        cwd=str(project_root),
-                    )
-                    if status_result.returncode == 0:
-                        context["uncommitted_changes"] = bool(status_result.stdout.strip())
-                except Exception:
-                    pass
-
-                # Build summary
-                parts = []
-                spec_id = context["current_spec"].get("id", "")
-                if spec_id:
-                    parts.append(spec_id)
-                if context["active_tasks"]:
-                    parts.append(f"{len(context['active_tasks'])} active tasks")
-                if context["key_decisions"]:
-                    parts.append(f"{len(context['key_decisions'])} decisions")
-                if context["uncommitted_changes"]:
-                    parts.append("Has uncommitted changes")
-                summary = ". ".join(parts) if parts else "Session cleared"
-
-                # Save snapshot for format_session_output() to pick up
-                save_context_snapshot(
-                    project_root=project_root,
-                    trigger="clear",
-                    context=context,
-                    conversation_summary=summary,
-                    session_id=payload.get("session_id", ""),
-                )
-                if spec_id:
-                    save_spec_state(project_root, context["current_spec"])
-                if context["active_tasks"]:
-                    save_tasks_backup(project_root, context["active_tasks"])
-
-            except Exception as e:
-                logging.warning(f"Failed to save context on /clear: {e}")
-
         # Check if setup messages should be shown
         show_messages = should_show_setup_messages()
 
@@ -1252,73 +1108,6 @@ def main() -> None:
             }
             print(json.dumps(error_response, ensure_ascii=False))
             print(f"SessionStart error: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    else:
-        # Fallback to legacy timeout handling
-        try:
-            from lib.timeout import CrossPlatformTimeout
-            from lib.timeout import TimeoutError as PlatformTimeoutError
-
-            # Set 5-second timeout
-            timeout = CrossPlatformTimeout(5)
-            timeout.start()
-
-            try:
-                result = execute_session_start()
-                print(json.dumps(result))
-                sys.exit(0)
-
-            except PlatformTimeoutError:
-                # Timeout - return minimal valid response
-                timeout_response_legacy: dict[str, Any] = {
-                    "continue": True,
-                    "systemMessage": "⚠️ Session start timeout - continuing without project info",
-                }
-                print(json.dumps(timeout_response_legacy))
-                print("SessionStart hook timeout after 5 seconds", file=sys.stderr)
-                sys.exit(1)
-
-            finally:
-                # Always cancel timeout
-                timeout.cancel()
-
-        except ImportError:
-            # No timeout handling available
-            try:
-                result = execute_session_start()
-                print(json.dumps(result))
-                sys.exit(0)
-            except Exception as e:
-                print(
-                    json.dumps(
-                        {
-                            "continue": True,
-                            "systemMessage": "⚠️ Session start completed with errors",
-                            "error": str(e),
-                        }
-                    )
-                )
-                sys.exit(0)
-
-        except json.JSONDecodeError as e:
-            # JSON parse error - hookSpecificOutput not valid for SessionStart
-            json_error_response: dict[str, Any] = {
-                "continue": True,
-                "systemMessage": f"⚠️ SessionStart JSON parse error: {e}",
-            }
-            print(json.dumps(json_error_response))
-            print(f"SessionStart JSON parse error: {e}", file=sys.stderr)
-            sys.exit(1)
-
-        except Exception as e:
-            # Unexpected error - hookSpecificOutput not valid for SessionStart
-            general_error_response: dict[str, Any] = {
-                "continue": True,
-                "systemMessage": f"⚠️ SessionStart error: {e}",
-            }
-            print(json.dumps(general_error_response))
-            print(f"SessionStart unexpected error: {e}", file=sys.stderr)
             sys.exit(1)
 
 

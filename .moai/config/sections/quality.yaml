@@ -61,6 +61,24 @@ constitution:
       error_increase_threshold: 0
       warning_increase_threshold: 10
       type_error_increase_threshold: 0
+    trust5_integration:
+      tested:
+      - unit_tests_pass
+      - lsp_type_errors == 0
+      - lsp_errors == 0
+      readable:
+      - naming_conventions_followed
+      - lsp_lint_errors == 0
+      understandable:
+      - documentation_complete
+      - code_complexity_acceptable
+      - lsp_warnings < threshold
+      secured:
+      - security_scan_pass
+      - lsp_security_warnings == 0
+      trackable:
+      - logs_structured
+      - lsp_diagnostic_history_tracked
 report_generation:
   enabled: true
   auto_create: false

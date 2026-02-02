@@ -1,20 +1,25 @@
 ---
-name: "moai-library-shadcn"
-description: "Moai Lib Shadcn Ui - Professional implementation guide"
-version: 2.1.0
-category: "library"
-modularized: true
+name: moai-library-shadcn
+description: >
+  Provides shadcn/ui component library expertise for React applications with Tailwind CSS.
+  Use when implementing UI components, design systems, or component composition with
+  shadcn/ui, Radix primitives, or Tailwind-based component libraries.
+  Do NOT use for non-React frameworks or custom CSS-only styling
+  (use moai-domain-frontend instead).
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
-tags: ['library', 'shadcn', 'enterprise', 'development', 'ui']
-aliases: ['moai-library-shadcn']
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+metadata:
+  version: "2.1.0"
+  category: "library"
+  modularized: "true"
+  status: "active"
+  updated: "2026-01-11"
+  tags: "library, shadcn, enterprise, development, ui"
+  aliases: "moai-library-shadcn"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["shadcn", "component library", "design system", "radix", "tailwind", "ui components"]
 ---

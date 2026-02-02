@@ -7,7 +7,7 @@
 | SPEC ID | SPEC-RANK-001 |
 | Title | MoAI Token Rank Leaderboard Service |
 | Version | 1.0.0 |
-| Status | Draft |
+| Status | Completed |
 | Created | 2026-01-11 |
 | Author | GOOS |
 | Domain | Full-Stack (Frontend + Backend + CLI) |

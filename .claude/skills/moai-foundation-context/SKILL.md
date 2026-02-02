@@ -1,37 +1,33 @@
 ---
 name: moai-foundation-context
-aliases: [moai-foundation-context]
-description: Enterprise context and session management with token budget optimization and state persistence
-version: 3.1.0
-modularized: false
+description: >
+  Manages context window optimization, session state persistence, and token budget
+  allocation for multi-agent workflows.
+  Use when dealing with token budget management, context window limits, session handoff,
+  state persistence across agents, or /clear strategies.
+  Do NOT use for agent orchestration patterns
+  (use moai-foundation-core instead).
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
-category: foundation
-tags:
-  [
-    "foundation",
-    "context",
-    "session",
-    "token-optimization",
-    "state-management",
-    "multi-agent",
-  ]
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-replaces: moai-core-context-budget, moai-core-session-state
+metadata:
+  version: "3.1.0"
+  category: "foundation"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "false"
+  tags: "foundation, context, session, token-optimization, state-management, multi-agent"
+  aliases: "moai-foundation-context"
+  replaces: "moai-core-context-budget, moai-core-session-state"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords:
     - "token"

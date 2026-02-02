@@ -1,27 +1,31 @@
 ---
-name: "moai-foundation-philosopher"
-description: "Strategic thinking framework integrating First Principles Analysis, Stanford Design Thinking, and MIT Systems Engineering for deeper problem-solving and decision-making"
-version: 1.1.0
-category: "foundation"
-modularized: true
+name: moai-foundation-philosopher
+description: >
+  Strategic thinking framework integrating First Principles Analysis, Stanford Design
+  Thinking, and MIT Systems Engineering for deeper problem-solving.
+  Use when performing architecture decisions, technology selection trade-offs,
+  root cause analysis, cognitive bias detection, or first principles decomposition.
+  Do NOT use for code quality validation (use moai-foundation-quality instead)
+  or implementation workflows (use moai-workflow-ddd instead).
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
-tags: ['foundation', 'strategic-thinking', 'first-principles', 'trade-off-analysis', 'cognitive-bias', 'decision-making']
-updated: 2026-01-08
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+metadata:
+  version: "1.1.0"
+  category: "foundation"
+  status: "active"
+  updated: "2026-01-08"
+  modularized: "true"
+  tags: "foundation, strategic-thinking, first-principles, trade-off-analysis, cognitive-bias, decision-making"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords:
     - "architecture"
