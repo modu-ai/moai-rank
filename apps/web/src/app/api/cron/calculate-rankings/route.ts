@@ -13,6 +13,9 @@ import { delPattern } from '@/lib/cache';
  * - Uses Connection Pooler for batch operations
  * - Batch upserts instead of N+1 pattern (BATCH_SIZE = 100)
  * - Execution time monitoring for observability
+ * - V010: Per-period error isolation and independent streak calculation
+ * - V011: Optimized aggregation query with direct token_usage scan
+ * - V012: Per-period cache invalidation and independent daily aggregates
  */
 
 // Maximum execution time for the cron job (requires Pro plan for > 10s)
@@ -31,8 +34,11 @@ type PeriodType = 'daily' | 'weekly' | 'monthly' | 'all_time';
 
 interface RankingCalculationResult {
   period: PeriodType;
+  status: 'success' | 'error';
   usersProcessed: number;
   rankingsUpdated: number;
+  executionTimeMs: number;
+  error?: string;
 }
 
 /**
@@ -43,8 +49,11 @@ interface RankingCalculationResult {
  *
  * Security: Verifies CRON_SECRET header to prevent unauthorized access.
  * V012: CRON_SECRET is REQUIRED in production - bypassed in development.
+ *
+ * V010: Per-period error isolation ensures all periods are attempted
+ * even if one fails. Cache invalidation is immediate per period.
  */
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<Response> {
   try {
     // Verify cron secret for security
     const authHeader = request.headers.get('authorization');
@@ -65,35 +74,88 @@ export async function GET(request: NextRequest) {
     }
 
     const results: RankingCalculationResult[] = [];
-
-    // Calculate rankings for each period
     const periods: PeriodType[] = ['daily', 'weekly', 'monthly', 'all_time'];
 
+    // V010: Calculate streaks ONCE before the period loop
+    // Instead of recalculating for each period, share the same streak data
+    console.log('[CRON] Calculating streaks (shared across all periods)...');
+    const streakStartTime = Date.now();
+    const streakData = await calculateStreaks();
+    const streakTimeMs = Date.now() - streakStartTime;
+    console.log(`[CRON] Streak calculation completed in ${streakTimeMs}ms for ${streakData.size} users`);
+
+    // V010: Create pooledDb ONCE before the period loop
+    const pooledDb = getPooledDb();
+
+    // V010: Per-period error isolation - each period runs independently
     for (const period of periods) {
-      const result = await calculateRankingsForPeriod(period);
-      results.push(result);
+      const startTime = Date.now();
+      try {
+        console.log(`[CRON] Starting ${period} rankings calculation...`);
+        const result = await calculateRankingsForPeriod(period, streakData, pooledDb);
+
+        // V010: Immediate per-period cache invalidation
+        // Don't wait until all periods complete - invalidate right after success
+        try {
+          const pattern = `moai-rank:leaderboard:${period}:*`;
+          const cacheCount = await delPattern(pattern);
+          console.log(`[CRON] Invalidated ${cacheCount} leaderboard caches for period: ${period}`);
+        } catch (cacheError) {
+          console.error(`[CRON] Cache invalidation failed for ${period}:`, cacheError);
+          // Continue even if cache invalidation fails - it's not critical
+        }
+
+        const executionTimeMs = Date.now() - startTime;
+        results.push({
+          ...result,
+          executionTimeMs,
+        });
+        console.log(`[CRON] ${period} completed successfully in ${executionTimeMs}ms`);
+      } catch (periodError) {
+        const executionTimeMs = Date.now() - startTime;
+        const errorMessage = periodError instanceof Error ? periodError.message : String(periodError);
+        console.error(`[CRON] ${period} calculation failed after ${executionTimeMs}ms:`, periodError);
+        results.push({
+          period,
+          status: 'error',
+          usersProcessed: 0,
+          rankingsUpdated: 0,
+          executionTimeMs,
+          error: errorMessage,
+        });
+        // Continue to next period instead of failing entirely
+      }
     }
 
-    // Invalidate cache after rankings updated
-    // This ensures all APIs return fresh data on next request
-    console.log('[CRON] Invalidating caches...');
-    let totalInvalidated = 0;
-
-    for (const period of periods) {
-      const pattern = `moai-rank:leaderboard:${period}:*`;
-      const count = await delPattern(pattern);
-      totalInvalidated += count;
-      console.log(`[CRON] Invalidated ${count} leaderboard caches for period: ${period}`);
+    // V010: Daily aggregates independent - runs in its own try-catch
+    try {
+      console.log('[CRON] Updating daily aggregates...');
+      const aggregateStartTime = Date.now();
+      await updateDailyAggregates(pooledDb);
+      const aggregateTimeMs = Date.now() - aggregateStartTime;
+      console.log(`[CRON] Daily aggregates updated in ${aggregateTimeMs}ms`);
+    } catch (aggregateError) {
+      console.error('[CRON] Daily aggregates update failed:', aggregateError);
+      // Continue even if daily aggregates fail - rankings are more important
     }
 
-    console.log(`[CRON] Total caches invalidated: ${totalInvalidated}`);
+    // V010: Return summary with per-period status
+    const successCount = results.filter((r) => r.status === 'success').length;
+    const errorCount = results.filter((r) => r.status === 'error').length;
+    const totalTimeMs = results.reduce((sum, r) => sum + r.executionTimeMs, 0);
 
-    // Update daily aggregates
-    await updateDailyAggregates();
+    console.log(
+      `[CRON] Complete: ${successCount}/${periods.length} periods succeeded, ${errorCount} failed, total time: ${totalTimeMs}ms`
+    );
 
     return successResponse({
-      success: true,
+      success: errorCount === 0,
       timestamp: new Date().toISOString(),
+      summary: {
+        periods_succeeded: successCount,
+        periods_failed: errorCount,
+        total_execution_time_ms: totalTimeMs,
+      },
       results,
     });
   } catch (error) {
@@ -108,8 +170,18 @@ export async function GET(request: NextRequest) {
  * V013: Uses yesterday's date as the base for ranking calculation.
  * This ensures that when cron runs daily, it generates rankings for
  * the previous day, allowing each day to have its own ranking record.
+ *
+ * V010: Accepts pre-calculated streak data and pooledDb instance
+ * to avoid redundant calculations across periods.
+ *
+ * V011: Uses optimized query pattern - queries token_usage directly
+ * instead of LEFT JOIN users, filtering by userId IS NOT NULL.
  */
-async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCalculationResult> {
+async function calculateRankingsForPeriod(
+  period: PeriodType,
+  streakData: Map<string, number>,
+  pooledDb: ReturnType<typeof getPooledDb>
+): Promise<RankingCalculationResult> {
   // Use yesterday as the base date for ranking calculation
   // This ensures each day gets its own ranking record
   const yesterday = new Date();
@@ -120,40 +192,49 @@ async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCa
   const periodEnd = getPeriodEnd(period, yesterday);
   const now = yesterday; // Use yesterday for updatedAt timestamp
 
-  // Get all users with their token usage for this period
-  // Uses both lower bound (periodStart) and upper bound (periodEnd) to ensure
-  // each period captures exactly its own data without overlap.
-  const userStats = await db
+  // V011: Optimized query - scan token_usage directly instead of LEFT JOIN users
+  // This avoids scanning all users even those with no activity.
+  // Group by userId and filter where inputTokens > 0, which naturally excludes
+  // users with no token usage in this period.
+  const rawStats = await db
     .select({
-      userId: users.id,
+      userId: tokenUsage.userId,
       totalInputTokens: sql<number>`COALESCE(SUM(${tokenUsage.inputTokens}), 0)`,
       totalOutputTokens: sql<number>`COALESCE(SUM(${tokenUsage.outputTokens}), 0)`,
       sessionCount: sql<number>`COUNT(DISTINCT ${tokenUsage.sessionId})`,
     })
-    .from(users)
-    .leftJoin(
-      tokenUsage,
+    .from(tokenUsage)
+    .where(
       and(
-        eq(tokenUsage.userId, users.id),
         period === 'all_time'
           ? sql`1=1`
           : and(
               gte(tokenUsage.recordedAt, new Date(periodStart)),
               sql`${tokenUsage.recordedAt} < ${new Date(periodEnd)}`
-            )
+            ),
+        sql`${tokenUsage.userId} IS NOT NULL`
       )
     )
-    .groupBy(users.id)
+    .groupBy(tokenUsage.userId)
     .having(sql`COALESCE(SUM(${tokenUsage.inputTokens}), 0) > 0`);
 
+  // Filter null userIds for type safety (SQL WHERE already excludes them)
+  const userStats = rawStats.filter(
+    (r): r is typeof r & { userId: string } => r.userId !== null
+  );
+
   if (userStats.length === 0) {
-    return { period, usersProcessed: 0, rankingsUpdated: 0 };
+    return {
+      period,
+      status: 'success',
+      usersProcessed: 0,
+      rankingsUpdated: 0,
+      executionTimeMs: 0,
+    };
   }
 
-  // Calculate streak for each user (simplified - count distinct days in last 30 days)
-  const streakData = await calculateStreaks();
-
-  // Calculate composite scores and sort
+  // V010: Use pre-calculated streak data instead of calculating for each period
+  // This eliminates redundant queries - calculateStreaks() already has the data
   const scoredUsers = userStats.map((user) => {
     const streak = streakData.get(user.userId) ?? 0;
     const score = calculateCompositeScore({
@@ -180,12 +261,10 @@ async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCa
   scoredUsers.sort((a, b) => b.compositeScore - a.compositeScore);
 
   // V009: Batch upsert rankings instead of N+1 pattern
-  const pooledDb = getPooledDb();
-
   // Process in batches for better performance
   let rankingsUpdated = 0;
 
-  for (let batchStart = 0; batchStart < scoredUsers.length; batchStart += BATCH_SIZE) {
+  for (const batchStart of Array.from({ length: Math.ceil(scoredUsers.length / BATCH_SIZE) }, (_, i) => i * BATCH_SIZE)) {
     const batch = scoredUsers.slice(batchStart, batchStart + BATCH_SIZE);
 
     // Prepare batch values with rank positions
@@ -227,14 +306,19 @@ async function calculateRankingsForPeriod(period: PeriodType): Promise<RankingCa
 
   return {
     period,
+    status: 'success',
     usersProcessed: userStats.length,
     rankingsUpdated,
+    executionTimeMs: 0, // Set by caller
   };
 }
 
 /**
  * Calculate activity streaks for all users
  * Returns a map of userId -> streak days
+ *
+ * V010: Called ONCE before the period loop to avoid redundant
+ * stripe calculations. Result is shared across all periods.
  */
 async function calculateStreaks(): Promise<Map<string, number>> {
   const streakMap = new Map<string, number>();
@@ -249,7 +333,7 @@ async function calculateStreaks(): Promise<Map<string, number>> {
       activeDays: sql<number>`COUNT(DISTINCT DATE(${tokenUsage.recordedAt}))`,
     })
     .from(tokenUsage)
-    .where(gte(tokenUsage.recordedAt, thirtyDaysAgo))
+    .where(and(gte(tokenUsage.recordedAt, thirtyDaysAgo), sql`${tokenUsage.userId} IS NOT NULL`))
     .groupBy(tokenUsage.userId);
 
   for (const row of activeDays) {
@@ -264,10 +348,12 @@ async function calculateStreaks(): Promise<Map<string, number>> {
 /**
  * Update daily aggregates for all users
  * V009: Uses batch processing for better performance
+ *
+ * V010: Accepts pooledDb instance as parameter instead of creating new one
+ * V010: Wrapped in try-catch at caller level for independent error handling
  */
-async function updateDailyAggregates(): Promise<void> {
+async function updateDailyAggregates(pooledDb: ReturnType<typeof getPooledDb>): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
-  const pooledDb = getPooledDb();
 
   // Calculate today's aggregates per user
   const todayStats = await db
@@ -343,6 +429,6 @@ async function updateDailyAggregates(): Promise<void> {
  * OPTIONS /api/cron/calculate-rankings
  * Handle CORS preflight (not typically needed for cron)
  */
-export async function OPTIONS() {
+export async function OPTIONS(): Promise<Response> {
   return new Response(null, { status: 204 });
 }
