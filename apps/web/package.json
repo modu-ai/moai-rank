@@ -14,7 +14,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "bun run src/db/seed.ts"
+    "db:seed": "bun run src/db/seed.ts",
+    "cleanup:orphaned-users": "bun run src/scripts/cleanup-orphaned-users.ts",
+    "cleanup:orphaned-users:execute": "bun run src/scripts/cleanup-orphaned-users.ts --execute"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.7",
