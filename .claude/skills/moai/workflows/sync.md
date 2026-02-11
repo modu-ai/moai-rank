@@ -1,3 +1,33 @@
+---
+name: moai-workflow-sync
+description: >
+  Synchronizes documentation with code changes, verifies project quality,
+  and finalizes pull requests. Third step of the Plan-Run-Sync workflow.
+  Includes SPEC divergence analysis and project document updates.
+  Use when documentation sync, PR creation, or quality verification is needed.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+user-invocable: false
+metadata:
+  version: "1.1.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-03"
+  tags: "sync, documentation, pull-request, quality, verification, pr"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["sync", "docs", "pr", "documentation", "pull request", "changelog", "readme"]
+  agents: ["manager-docs", "manager-quality", "manager-git"]
+  phases: ["sync"]
+---
+
 # Sync Workflow Orchestration
 
 ## Purpose
@@ -94,6 +124,13 @@ Agent: manager-quality subagent
 
 Invoke regardless of project language. Execute TRUST 5 quality validation and generate comprehensive quality report.
 
+#### LSP Quality Gates
+
+The sync phase enforces LSP-based quality gates as configured in quality.yaml:
+- Zero errors required (lsp_quality_gates.sync.max_errors: 0)
+- Maximum 10 warnings allowed (lsp_quality_gates.sync.max_warnings: 10)
+- Clean LSP state required (lsp_quality_gates.sync.require_clean_lsp: true)
+
 #### Step 5: Generate Quality Report
 
 Aggregate all results into a quality report showing status for test-runner, linter, type-checker, and code-review. Determine overall status (PASS or WARN).
@@ -107,7 +144,7 @@ Status mode early exit: If mode is "status", display quality report and exit. No
 - .moai/ directory must exist
 - .claude/ directory must exist
 - Project must be inside a Git repository
-- Python 3 should be available (soft requirement)
+
 
 #### Step 1.2: Analyze Project Status
 
@@ -180,7 +217,7 @@ Display sync plan report and present options:
 Before any modifications:
 
 - Generate timestamp identifier
-- Create backup directory: .moai-backups/sync-{timestamp}/
+- Create backup directory: .moai/backups/sync-{timestamp}/
 - Copy critical files: README.md, docs/, .moai/specs/
 - Verify backup integrity (non-empty directory check)
 
@@ -332,6 +369,14 @@ Tool: AskUserQuestion with options:
 
 ---
 
+## Team Mode
+
+The sync phase always uses sub-agent mode (manager-docs), even when --team is active for other phases. Documentation synchronization requires sequential consistency and a single authoritative view of project state.
+
+For rationale and details, see workflows/team-sync.md.
+
+---
+
 ## Graceful Exit
 
 When user aborts at any decision point:
@@ -355,5 +400,6 @@ All of the following must be verified:
 
 ---
 
-Version: 1.1.0
-Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added SPEC divergence analysis, project document updates, and SPEC lifecycle awareness.
+Version: 2.0.0
+Updated: 2026-02-07
+Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, and LSP quality gates.

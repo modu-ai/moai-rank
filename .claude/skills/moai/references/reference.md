@@ -1,3 +1,33 @@
+---
+name: moai-reference
+description: >
+  Common execution patterns, flag reference, legacy command mapping,
+  configuration file paths, and error handling delegation used across all
+  MoAI workflows. Provides resume patterns and context propagation guidance.
+  Use when needing execution patterns, flag details, or configuration reference.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+user-invocable: false
+metadata:
+  version: "1.1.0"
+  category: "foundation"
+  status: "active"
+  updated: "2026-02-03"
+  tags: "reference, patterns, flags, configuration, legacy, resume, context"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["reference", "pattern", "flag", "config", "resume", "legacy", "mapping"]
+  agents: ["manager-spec", "manager-ddd", "manager-docs", "manager-quality", "manager-git"]
+  phases: ["plan", "run", "sync"]
+---
+
 # MoAI Skill Reference
 
 Common patterns, flag reference, legacy command mapping, and configuration files used across all MoAI workflows.
@@ -151,7 +181,7 @@ Previous /moai:X-Y command format mapped to new /moai subcommand format:
 - /moai:9-feedback maps to /moai feedback
 - /moai:fix maps to /moai fix
 - /moai:loop maps to /moai loop
-- /moai:alfred maps to /moai (default autonomous workflow)
+- /moai:moai maps to /moai (default autonomous workflow)
 
 Note: /moai:99-release is a separate local-only command, not part of the /moai skill.
 
@@ -187,10 +217,10 @@ Note: /moai:99-release is a separate local-only command, not part of the /moai s
 ### Version Files (5 files synchronized during release)
 
 - pyproject.toml: Authoritative version source
-- src/moai_adk/version.py: Runtime fallback version
+- pkg/version/version.go: Runtime version with build-time injection
 - .moai/config/config.yaml: Config display version
 - .moai/config/sections/system.yaml: System metadata version
-- src/moai_adk/templates/.moai/config/sections/system.yaml: Template version for distribution
+- internal/template/templates/: Embedded template directory for binary bundling
 
 ---
 

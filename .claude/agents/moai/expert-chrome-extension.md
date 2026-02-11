@@ -11,17 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-platform-chrome-extension, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-foundation-quality
-hooks:
-  PostToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: "${SHELL:-/bin/bash} -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__code_formatter.py\"'"
-          timeout: 30
-        - type: command
-          command: "${SHELL:-/bin/bash} -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__linter.py\"'"
-          timeout: 30
+skills: moai-foundation-claude, moai-foundation-core, moai-platform-chrome-extension, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-foundation-quality
 ---
 
 # Chrome Extension Expert - Manifest V3 Development Specialist

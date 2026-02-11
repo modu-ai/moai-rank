@@ -1,8 +1,43 @@
+---
+name: moai-workflow-run
+description: >
+  DDD/TDD/Hybrid implementation workflow for SPEC requirements. Second step
+  of the Plan-Run-Sync workflow. Routes to manager-ddd or manager-tdd based
+  on quality.yaml development_mode setting.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+user-invocable: false
+metadata:
+  version: "2.0.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-07"
+  tags: "run, implementation, ddd, tdd, hybrid, spec"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["run", "implement", "build", "create", "develop", "code"]
+  agents: ["manager-ddd", "manager-tdd", "manager-strategy", "manager-quality", "manager-git"]
+  phases: ["run"]
+---
+
 # Run Workflow Orchestration
 
 ## Purpose
 
-Implement SPEC requirements through Domain-Driven Development (DDD) methodology using the ANALYZE-PRESERVE-IMPROVE cycle. This is the second step of the Plan-Run-Sync workflow.
+Implement SPEC requirements using the configured development methodology. The methodology is determined by `development_mode` in quality.yaml:
+
+- **ddd**: Domain-Driven Development using ANALYZE-PRESERVE-IMPROVE cycle (for legacy refactoring only)
+- **tdd**: Test-Driven Development using RED-GREEN-REFACTOR cycle (for isolated new modules)
+- **hybrid**: Combined approach - TDD for new code, DDD for existing code modifications (recommended for all development)
+
+This is the second step of the Plan-Run-Sync workflow.
 
 ## Scope
 
@@ -14,6 +49,7 @@ Implement SPEC requirements through Domain-Driven Development (DDD) methodology 
 
 - $ARGUMENTS: SPEC-ID to implement (e.g., SPEC-AUTH-001)
 - Resume: Re-running /moai run SPEC-XXX resumes from last successful phase checkpoint
+- --team: Enable team-based implementation (see team-run.md for parallel implementation team)
 
 ## Context Loading
 
@@ -71,7 +107,7 @@ Purpose: Decompose the approved execution plan into atomic, reviewable tasks fol
 Tasks for manager-strategy:
 
 - Decompose plan into atomic implementation tasks
-- Each task must be completable in a single DDD cycle
+- Each task must be completable in a single DDD/TDD cycle
 - Assign priority and dependencies for each task
 - Generate task tracking entries for progress visibility
 - Verify task coverage matches all SPEC requirements
@@ -84,11 +120,35 @@ Task structure for each decomposed task:
 - Dependencies: List of prerequisite tasks
 - Acceptance Criteria: How to verify completion
 
-Constraints: Maximum 10 tasks per SPEC. If more needed, the SPEC should be split.
+Constraints: Decompose into atomic tasks where each task completes in a single DDD/TDD cycle. No artificial limit on task count. If the SPEC itself is too complex, consider splitting the SPEC.
 
 Output: Task list with coverage_verified flag set to true.
 
-### Phase 2: DDD Implementation
+### Development Mode Routing
+
+Before Phase 2, determine the development methodology by reading `.moai/config/sections/quality.yaml`:
+
+**If development_mode is "ddd":**
+- Route all tasks to manager-ddd subagent
+- Use ANALYZE-PRESERVE-IMPROVE cycle
+- Focus on behavior preservation with characterization tests
+
+**If development_mode is "tdd":**
+- Route all tasks to manager-tdd subagent
+- Use RED-GREEN-REFACTOR cycle
+- Focus on test-first development with specification tests
+
+**If development_mode is "hybrid" (recommended):**
+- Classify each task by change type:
+  - New files → Route to manager-tdd (TDD workflow)
+  - New functions in existing files → Route to manager-tdd (TDD workflow)
+  - Modifications to existing code → Route to manager-ddd (DDD workflow)
+  - Refactoring existing code → Route to manager-ddd (DDD workflow)
+- Execute tasks in dependency order, routing to appropriate agent per task
+
+### Phase 2: Implementation (Mode-Dependent)
+
+#### Phase 2A: DDD Implementation (for ddd mode or legacy code in hybrid mode)
 
 Agent: manager-ddd subagent
 
@@ -123,6 +183,40 @@ The manager-ddd subagent must track deviations from the original SPEC plan durin
 
 This divergence data is consumed by /moai sync for SPEC document updates and project document synchronization.
 
+#### Phase 2B: TDD Implementation (for tdd mode or new code in hybrid mode)
+
+Agent: manager-tdd subagent
+
+Input: Approved execution plan from Phase 1 plus task decomposition from Phase 1.5.
+
+The TDD cycle executes three stages:
+
+- RED: Write specification tests that define expected behavior. Tests must fail initially (confirms they test something new).
+- GREEN: Write minimal implementation code to make tests pass. Focus on correctness, not elegance.
+- REFACTOR: Improve code structure while keeping tests green. Apply clean code principles.
+
+Requirements:
+
+- Initialize task tracking for progress across TDD cycles
+- Execute the complete RED-GREEN-REFACTOR cycle for each feature
+- Write tests before implementation (test-first discipline)
+- Ensure minimum 80% coverage per commit (85% recommended for new code)
+
+Output: files_created list, specification_tests_created list, test_results (all passing), coverage percentage, refactoring_improvements list, implementation_divergence report.
+
+Implementation Divergence Tracking:
+
+The manager-tdd subagent must track deviations from the original SPEC plan during implementation:
+
+- planned_files: Files listed in plan.md that were expected to be created
+- actual_files: Files actually created during the TDD cycle
+- additional_features: Features or capabilities implemented beyond the original SPEC scope (with rationale)
+- scope_changes: Description of any scope adjustments made during implementation
+- new_dependencies: Any new libraries, packages, or external dependencies introduced
+- new_directories: Any new directory structures created
+
+This divergence data is consumed by /moai sync for SPEC document updates and project document synchronization.
+
 ### Phase 2.5: Quality Validation
 
 Agent: manager-quality subagent
@@ -137,12 +231,24 @@ TRUST 5 validation checks:
 - Secured: No security vulnerabilities introduced. OWASP compliance verified.
 - Trackable: All changes logged with clear commit messages. History analysis supported.
 
-Additional validation:
+Additional validation (mode-dependent):
 
+For DDD mode:
 - Test coverage at least 85%
 - Behavior preservation: All existing tests pass unchanged
 - Characterization tests pass: Behavior snapshots match
 - Structural improvement: Coupling and cohesion metrics improved
+
+For TDD mode:
+- Test coverage at least 80% per commit (85% recommended for new code)
+- Test-first discipline: No code written without failing test first
+- All specification tests pass
+- Clean code principles applied in REFACTOR phase
+
+For Hybrid mode:
+- New code: TDD coverage targets (85% for new files)
+- Modified code: DDD coverage targets (85% with behavior preservation)
+- Overall coverage improvement trend maintained
 
 Output: trust_5_validation results per pillar, coverage percentage, overall status (PASS, WARNING, or CRITICAL), and issues_found list.
 
@@ -155,6 +261,14 @@ If status is CRITICAL:
 - Exit current execution flow
 
 If status is PASS or WARNING: Continue to Phase 3.
+
+### LSP Quality Gates
+
+The run phase enforces LSP-based quality gates as configured in quality.yaml:
+- Zero LSP errors required (lsp_quality_gates.run.max_errors: 0)
+- Zero type errors required (lsp_quality_gates.run.max_type_errors: 0)
+- Zero lint errors required (lsp_quality_gates.run.max_lint_errors: 0)
+- No regression from baseline allowed (lsp_quality_gates.run.allow_regression: false)
 
 ### Phase 3: Git Operations (Conditional)
 
@@ -197,6 +311,20 @@ Options:
 
 ---
 
+## Team Mode Routing
+
+When --team flag is provided or auto-selected, the run phase MUST switch to team orchestration:
+
+1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
+2. If prerequisites met: Read workflows/team-run.md and execute the team workflow (TeamCreate with backend-dev + frontend-dev + tester + quality)
+3. If prerequisites NOT met: Warn user with message "Team mode requires workflow.team.enabled: true in workflow.yaml and CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var" then fallback to standard sub-agent mode (manager-ddd/tdd based on development_mode)
+
+Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inherit) + quality (inherit, read-only)
+
+For detailed team orchestration steps, see workflows/team-run.md.
+
+---
+
 ## Context Propagation
 
 Context flows forward through every phase:
@@ -217,7 +345,10 @@ All of the following must be verified:
 - Phase 1: manager-strategy returned execution plan with requirements and success criteria
 - User approval checkpoint blocked Phase 2 until user confirmed
 - Phase 1.5: Tasks decomposed with requirement traceability
-- Phase 2: manager-ddd executed complete DDD cycle with 85%+ coverage and behavior preserved
+- Phase 2: Implementation completed according to development_mode:
+  - DDD mode: manager-ddd executed ANALYZE-PRESERVE-IMPROVE with 85%+ coverage
+  - TDD mode: manager-tdd executed RED-GREEN-REFACTOR with 85%+ coverage
+  - Hybrid mode: Appropriate agent per task type with 85%+ unified coverage target
 - Phase 2.5: manager-quality completed TRUST 5 validation with PASS or WARNING status
 - Quality gate blocked Phase 3 if status was CRITICAL
 - Phase 3: manager-git created commits (branch or direct) only if quality permitted
@@ -225,5 +356,6 @@ All of the following must be verified:
 
 ---
 
-Version: 1.1.0
-Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking for sync phase consumption.
+Version: 2.0.0
+Updated: 2026-02-07
+Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking, development_mode routing (ddd/tdd/hybrid), team mode support, and LSP quality gates.

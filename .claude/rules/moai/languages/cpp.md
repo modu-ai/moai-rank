@@ -9,61 +9,48 @@ paths:
 
 # C++ Rules
 
-Version: C++23/C++20
+Version: C++23 / C++20
 
 ## Tooling
 
 - Build: CMake 3.28+
 - Linting: clang-tidy
 - Formatting: clang-format
-- Testing: Google Test or Catch2
+- Testing: GoogleTest or Catch2
+- Package management: vcpkg or Conan
 
-## Best Practices (2026)
+## MUST
 
-- Use smart pointers over raw pointers
-- Use concepts for template constraints
-- Use ranges for collection operations
-- Apply RAII for resource management
-- Use modules where supported (C++20)
+- Use smart pointers (unique_ptr, shared_ptr)
+- Use RAII for resource management
+- Use std::span for array views
+- Use std::optional for nullable values
+- Enable compiler warnings (-Wall -Wextra -Werror)
+- Document public APIs with Doxygen comments
 
-## CMake Configuration
+## MUST NOT
 
-```cmake
-cmake_minimum_required(VERSION 3.28)
-project(MyProject LANGUAGES CXX)
+- Use raw new/delete (use smart pointers)
+- Use C-style casts (use static_cast, etc.)
+- Ignore compiler warnings
+- Use macros when constexpr works
+- Leave uninitialized variables
+- Use using namespace in headers
 
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+## File Conventions
 
-# Use cxx_std_23 for target
-target_compile_features(mytarget PUBLIC cxx_std_23)
+- *_test.cpp for test files
+- .hpp for C++ headers, .h for C headers
+- Use PascalCase for classes and types
+- Use snake_case for functions and variables
+- Use SCREAMING_CASE for macros
 
-# Enable Unity builds for faster compilation
-set(CMAKE_UNITY_BUILD ON)
-```
+## Testing
 
-## C++23 Features
-
-```cpp
-// std::expected for error handling
-std::expected<int, Error> parse(std::string_view sv);
-
-// std::print for formatted output
-std::print("Hello, {}!\n", name);
-
-// Deducing this
-struct Widget {
-    template<typename Self>
-    auto&& value(this Self&& self) { return self.m_value; }
-};
-```
-
-## Performance
-
-- Use Unity builds to reduce compilation time
-- Use precompiled headers (PCH) for large projects
-- Profile with Valgrind/AddressSanitizer
-- Use `-O2` or `-O3` for release builds
+- Use GoogleTest or Catch2
+- Use GMock for mocking
+- Use sanitizers (ASan, UBSan) in CI
+- Use benchmark tests for performance
 
 ## MoAI Integration
 

@@ -42,7 +42,6 @@ triggers:
     - "delegation"
   agents:
     - "builder-agent"
-    - "builder-command"
     - "builder-skill"
     - "builder-plugin"
   phases:
@@ -196,11 +195,11 @@ When using Explore agent or direct exploration tools (Grep, Glob, Read), apply t
 
 **Search Scope Limitation**
 - Always use `path` parameter to limit search scope
-- Example: `Grep(pattern="async def", path="src/moai_adk/core/")` instead of `Grep(pattern="async def")`
+- Example: `Grep(pattern="func ", path="internal/core/")` instead of `Grep(pattern="async def")`
 
 **File Pattern Specificity**
 - Use specific Glob patterns instead of wildcards
-- Example: `Glob(pattern="src/moai_adk/core/*.py")` instead of `Glob(pattern="src/**/*.py")`
+- Example: `Glob(pattern="internal/core/*.go")` instead of `Glob(pattern="src/**/*.py")`
 
 **Parallel Processing**
 - Execute independent searches in parallel (single message, multiple tool calls)

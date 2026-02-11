@@ -1,3 +1,33 @@
+---
+name: moai-workflow-plan
+description: >
+  Creates comprehensive SPEC documents using EARS format as the first step
+  of the Plan-Run-Sync workflow. Handles project exploration, SPEC file
+  generation, validation, and optional Git environment setup with worktree
+  or branch creation. Use when planning features or creating specifications.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+user-invocable: false
+metadata:
+  version: "1.0.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-03"
+  tags: "plan, spec, ears, requirements, specification, design"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["plan", "spec", "design", "architect", "requirements", "feature request"]
+  agents: ["manager-spec", "Explore", "manager-git"]
+  phases: ["plan"]
+---
+
 # Plan Workflow Orchestration
 
 ## Purpose
@@ -21,6 +51,7 @@ Create comprehensive SPEC documents using EARS format as the first step of the P
 - --worktree: Create isolated Git worktree environment (highest priority)
 - --branch: Create traditional feature branch (second priority)
 - No flag: SPEC only by default; user may be prompted based on config
+- --team: Enable team-based exploration (see team-plan.md for parallel research team)
 - resume SPEC-XXX: Continue from last saved draft state
 
 Flag priority: --worktree takes precedence over --branch, which takes precedence over default.
@@ -203,6 +234,20 @@ Options:
 
 ---
 
+## Team Mode Routing
+
+When --team flag is provided or auto-selected, the plan phase MUST switch to team orchestration:
+
+1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
+2. If prerequisites met: Read workflows/team-plan.md and execute the team workflow (TeamCreate with researcher + analyst + architect)
+3. If prerequisites NOT met: Warn user with message "Team mode requires workflow.team.enabled: true in workflow.yaml and CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var" then fallback to standard sub-agent mode (manager-spec)
+
+Team composition: researcher (haiku) + analyst (inherit) + architect (inherit)
+
+For detailed team orchestration steps, see workflows/team-plan.md.
+
+---
+
 ## Completion Criteria
 
 All of the following must be verified:
@@ -219,5 +264,6 @@ All of the following must be verified:
 
 ---
 
-Version: 1.0.0
-Source: Extracted from .claude/commands/moai/1-plan.md v5.1.0
+Version: 2.0.0
+Updated: 2026-02-07
+Source: Extracted from .claude/commands/moai/1-plan.md v5.1.0. Added team mode support and --team flag.

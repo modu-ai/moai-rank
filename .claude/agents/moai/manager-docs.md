@@ -11,7 +11,19 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: acceptEdits
-skills: moai-foundation-claude, moai-foundation-core, moai-library-mermaid, moai-library-nextra, moai-formats-data, moai-docs-generation, moai-workflow-jit-docs
+skills: moai-foundation-claude, moai-foundation-core, moai-docs-generation, moai-workflow-jit-docs, moai-workflow-templates, moai-library-mermaid, moai-library-nextra, moai-formats-data, moai-foundation-context
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" docs-verification"
+          timeout: 10
+  SubagentStop:
+    - hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" docs-completion"
+          timeout: 10
 ---
 
 # Documentation Manager Expert
@@ -32,7 +44,8 @@ output_format: Professional documentation with Nextra framework setup, MDX conte
 checkpoint_strategy:
   enabled: true
   interval: every_phase
-  location: .moai/memory/checkpoints/docs/
+  # CRITICAL: Always use project root for .moai to prevent duplicate .moai in subfolders
+  location: $CLAUDE_PROJECT_DIR/.moai/memory/checkpoints/docs/
   resume_capability: true
 
 memory_management:
@@ -44,7 +57,7 @@ memory_management:
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -223,7 +236,7 @@ Core documentation skills (auto-loaded):
 - moai-foundation-claude: Claude Code authoring patterns, skills/agents/commands
 - moai-library-nextra: Nextra framework setup and optimization
 
-# Conditional skills (auto-loaded by Alfred when needed)
+# Conditional skills (auto-loaded by MoAI when needed)
 
 conditional_skills = [
 "moai-domain-uiux", # WCAG compliance, accessibility patterns, Pencil MCP integration
@@ -491,15 +504,15 @@ run: npm ci
 
 - name: Generate documentation from source
 run: |
-npx @alfred/nextra-expert generate \\
+npx @moai/nextra-expert generate \\
 --source ./src \\
 --output ./docs \\
 --config .nextra/config.json
 
 - name: Validate markdown and Mermaid
 run: |
-npx @alfred/docs-linter validate ./docs
-npx @alfred/mermaid-validator check ./docs
+npx @moai/docs-linter validate ./docs
+npx @moai/mermaid-validator check ./docs
 
 - name: Test documentation build
 run: npm run build:docs
@@ -529,10 +542,10 @@ working-directory: ./docs
 
 **Basic Documentation Generation Workflow:**
 
-Use Alfred delegation to generate comprehensive documentation:
+Use MoAI delegation to generate comprehensive documentation:
 
 ```bash
-# Delegation instruction for Alfred
+# Delegation instruction for MoAI
 "Use the manager-docs subagent to generate professional Nextra documentation from the @src/ directory.
 
 Requirements:
@@ -552,10 +565,10 @@ Config: .nextra/theme.config.tsx"
 
 **Advanced Custom Documentation Workflow:**
 
-Use Alfred delegation for specialized documentation requirements:
+Use MoAI delegation for specialized documentation requirements:
 
 ```bash
-# Delegation instruction for Alfred
+# Delegation instruction for MoAI
 "Use the manager-docs subagent to create specialized documentation with custom requirements:
 
 Target Audience: Intermediate developers
@@ -642,14 +655,14 @@ Expected Impact: Transform technical codebases into accessible, professional doc
 Upstream Agents (typically call this agent):
 
 - manager-ddd: Documentation generation after DDD implementation completes
-- core-quality: Documentation validation as part of quality gates
+- manager-quality: Documentation validation as part of quality gates
 
 Downstream Agents (this agent typically calls):
 
 - mcp-context7: Research latest documentation best practices
-- core-quality: Validate documentation quality and completeness
+- manager-quality: Validate documentation quality and completeness
 
 Parallel Agents (work alongside):
 
-- workflow-spec: Synchronize SPEC documentation with generated docs
+- manager-spec: Synchronize SPEC documentation with generated docs
 - design-uiux: Integrate design system documentation from Pencil

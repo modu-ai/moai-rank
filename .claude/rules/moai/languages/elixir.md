@@ -11,63 +11,44 @@ Version: Elixir 1.17+
 
 ## Tooling
 
-- Build: mix
-- Testing: ExUnit
+- Build: Mix
 - Linting: Credo
 - Formatting: mix format
+- Testing: ExUnit
+- Type checking: Dialyzer
 
-## Best Practices (2026)
+## MUST
 
 - Use pattern matching for control flow
-- Use Phoenix 1.7+ contexts for domain separation
-- Use OTP GenServer/Supervisor for stateful processes
-- Use Task.Supervisor for concurrent operations
-- Use Ecto.Multi for transactional operations
+- Use with for chained operations
+- Use GenServer for stateful processes
+- Use Supervisor trees for fault tolerance
+- Write @spec for public functions
+- Use @moduledoc and @doc for documentation
 
-## LiveView 1.1 Patterns
+## MUST NOT
 
-```elixir
-# Colocated Hooks - keep JavaScript close to Elixir
-defmodule MyAppWeb.ChartLive do
-  use MyAppWeb, :live_view
+- Use try/catch for control flow
+- Spawn processes without supervision
+- Use mutable state (Agent misuse)
+- Ignore dialyzer warnings
+- Use string concatenation in loops
+- Leave debug IO.inspect in production
 
-  # Hook is colocated with LiveView
-  @impl true
-  def mount(_params, _session, socket) do
-    {:ok, assign(socket, data: [])}
-  end
-end
-```
+## File Conventions
 
-```javascript
-// assets/js/hooks/chart.js
-export const Chart = {
-  mounted() {
-    this.handleEvent("update-chart", ({data}) => {
-      this.renderChart(data)
-    })
-  }
-}
-```
+- *_test.exs for test files
+- Use snake_case for modules and functions
+- Use PascalCase for module names
+- lib/ for application code
+- test/ for test files
 
-## OTP Patterns
+## Testing
 
-```elixir
-# Task.Supervisor for fire-and-forget tasks
-Task.Supervisor.start_child(MyApp.TaskSupervisor, fn ->
-  send_email(user)
-end)
-
-# Dynamic Supervisor for worker pools
-DynamicSupervisor.start_child(MyApp.WorkerSupervisor, {Worker, args})
-```
-
-## Performance
-
-- Use ETS for fast in-memory caching
-- Use `Stream` for lazy enumeration
-- Profile with `:observer.start()`
-- Use connection pooling with DBConnection
+- Use ExUnit with setup blocks
+- Use Mox for mocking behaviors
+- Use async: true for isolated tests
+- Use ExMachina for test factories
 
 ## MoAI Integration
 

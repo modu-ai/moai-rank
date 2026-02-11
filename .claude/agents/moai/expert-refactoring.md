@@ -11,17 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: [moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality]
-hooks:
-  PostToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__lsp_diagnostic.py\"'"
-          timeout: 30
-        - type: command
-          command: "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__linter.py\"'"
-          timeout: 30
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-tool-ast-grep, moai-workflow-testing, moai-workflow-ddd
 ---
 
 # Expert Refactoring Agent
@@ -126,7 +116,7 @@ Delegate TO:
 - expert-security: If security patterns need review
 
 Receive FROM:
-- Alfred: Large-scale transformation requests
+- MoAI: Large-scale transformation requests
 - expert-backend/frontend: Domain-specific refactoring needs
 - manager-quality: Code quality improvement tasks
 

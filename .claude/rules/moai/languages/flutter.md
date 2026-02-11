@@ -11,75 +11,44 @@ Version: Flutter 3.24+ / Dart 3.5+
 
 ## Tooling
 
-- Linting: dart analyze with flutter_lints
+- Build: flutter CLI
+- Linting: dart analyze, flutter_lints
 - Formatting: dart format
-- Testing: flutter test with coverage >= 85%
+- Testing: flutter test
+- Package management: pub
 
-## Best Practices (2026)
+## MUST
 
-- Use Riverpod 3.0 for state management
-- Use go_router for type-safe navigation
-- Prefer const constructors for performance
-- Use freezed for immutable data classes
-- Use drift for offline-first SQLite persistence
+- Use Riverpod or Provider for state management
+- Use go_router for navigation
+- Use freezed for immutable models
+- Use const constructors when possible
+- Handle null safety properly
+- Separate business logic from UI
 
-## Riverpod 3.0 Patterns
+## MUST NOT
 
-```dart
-// Code generation for type safety
-@riverpod
-class Counter extends _$Counter {
-  @override
-  int build() => 0;
+- Use setState in complex widgets
+- Use BuildContext across async gaps
+- Ignore analyzer warnings
+- Use dynamic type
+- Block the UI thread
+- Hardcode strings (use l10n)
 
-  void increment() => state++;
-}
+## File Conventions
 
-// Async data with automatic caching
-@riverpod
-Future<User> user(UserRef ref, {required int id}) async {
-  return ref.watch(apiProvider).fetchUser(id);
-}
-```
+- *_test.dart for test files
+- Use snake_case for file names
+- Use PascalCase for classes
+- Use camelCase for functions and variables
+- lib/ for source, test/ for tests
 
-## Offline-First Patterns
+## Testing
 
-```dart
-// Drift for local SQLite database
-@DriftDatabase(tables: [Users, Tasks])
-class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
-
-  // Auto-sync when online
-  Future<void> syncWithServer() async {
-    final localChanges = await getUnsynced();
-    await api.sync(localChanges);
-  }
-}
-```
-
-## Navigation
-
-```dart
-// Type-safe routing with go_router
-final router = GoRouter(
-  routes: [
-    GoRoute(
-      path: '/user/:id',
-      builder: (context, state) => UserScreen(
-        id: int.parse(state.pathParameters['id']!),
-      ),
-    ),
-  ],
-);
-```
-
-## Performance
-
-- Use `const` widgets to prevent rebuilds
-- Use `ListView.builder` for long lists
-- Profile with DevTools
-- Minimize widget rebuilds with selective providers
+- Use flutter_test for widget tests
+- Use mockito for mocking
+- Use golden tests for UI verification
+- Use integration_test for E2E
 
 ## MoAI Integration
 

@@ -1,7 +1,9 @@
 ---
 name: manager-ddd
 description: |
-  DDD (Domain-Driven Development) implementation specialist. Use PROACTIVELY for ANALYZE-PRESERVE-IMPROVE cycle, behavior-preserving refactoring, and legacy code improvement.
+  DDD (Domain-Driven Development) implementation specialist for LEGACY REFACTORING ONLY.
+  Use PROACTIVELY for ANALYZE-PRESERVE-IMPROVE cycle when refactoring EXISTING code.
+  DO NOT use for new features (use manager-tdd instead per quality.yaml hybrid_settings).
   MUST INVOKE when ANY of these keywords appear in user request:
   --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of refactoring strategy, behavior preservation, and legacy code transformation.
   EN: DDD, refactoring, legacy code, behavior preservation, characterization test, domain-driven refactoring
@@ -11,24 +13,39 @@ description: |
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-ddd, moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality
+memory: project
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-context, moai-foundation-quality, moai-workflow-ddd, moai-workflow-tdd, moai-workflow-testing, moai-tool-ast-grep
 hooks:
-  PostToolUse:
-    - matcher: "Write|Edit"
+  PreToolUse:
+    - matcher: "Write|Edit|MultiEdit"
       hooks:
         - type: command
-          command: "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__ast_grep_scan.py\"'"
-          timeout: 60
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" ddd-pre-transformation"
+          timeout: 5
+  PostToolUse:
+    - matcher: "Write|Edit|MultiEdit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" ddd-post-transformation"
+          timeout: 10
+  SubagentStop:
+    - hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" ddd-completion"
+          timeout: 10
 ---
 
-# DDD Implementer
+# DDD Implementer (Legacy Refactoring Specialist)
 
 ## Primary Mission
 
 Execute ANALYZE-PRESERVE-IMPROVE DDD cycles for behavior-preserving code refactoring with existing test preservation and characterization test creation.
 
-Version: 2.1.0
-Last Updated: 2026-01-22
+**IMPORTANT**: This agent is for LEGACY REFACTORING only (per quality.yaml `hybrid_settings.legacy_refactoring: ddd`).
+For NEW features, use `manager-tdd` instead (per quality.yaml `hybrid_settings.new_features: tdd`).
+
+Version: 2.2.0
+Last Updated: 2026-02-04
 
 ## Orchestration Metadata
 
@@ -43,7 +60,8 @@ output_format: Refactored code with identical behavior, preserved tests, charact
 checkpoint_strategy:
   enabled: true
   interval: every_transformation
-  location: .moai/memory/checkpoints/ddd/
+  # CRITICAL: Always use project root for .moai to prevent duplicate .moai in subfolders
+  location: $CLAUDE_PROJECT_DIR/.moai/memory/checkpoints/ddd/
   resume_capability: true
 
 memory_management:
@@ -487,7 +505,7 @@ Use DDD When:
 - Technical debt reduction is the primary objective
 - API contracts must remain identical
 
-Use DDD When:
+Use TDD When:
 
 - Creating new functionality from scratch
 - Behavior specification drives development
@@ -498,7 +516,7 @@ If Uncertain:
 
 - Ask: "Does the code I'm changing already exist with defined behavior?"
 - If YES: Use DDD
-- If NO: Use DDD
+- If NO: Use TDD (or Hybrid for most real-world scenarios)
 
 ---
 

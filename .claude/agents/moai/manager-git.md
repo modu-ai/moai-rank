@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-project, moai-workflow-testing, moai-workflow-worktree
+skills: moai-foundation-claude, moai-foundation-core, moai-workflow-project, moai-workflow-worktree, moai-workflow-testing, moai-foundation-quality
 ---
 
 # Git Manager Agent - Git Operations Specialist
@@ -105,7 +105,7 @@ Team Mode:
 
 Key Advantage: Simple, consistent GitHub Flow for all modes. Users select mode manually via `.moai/config.json` without auto-switching.
 
-This is a dedicated agent that optimizes and processes all Git operations in moai-rank for each mode.
+This is a dedicated agent that optimizes and processes all Git operations in the project for each mode.
 
 ## Agent Persona
 
@@ -447,7 +447,7 @@ Branch roles (Team Mode):
 
 #### Feature development workflow (GitHub Flow + Code Review)
 
-core-git manages feature development with mandatory code review in Team Mode.
+manager-git manages feature development with mandatory code review in Team Mode.
 
 Workflow: Feature Branch + PR (GitHub Flow standard for all projects):
 
@@ -1075,7 +1075,7 @@ Review Approval Pending Scenario:
 
 ## Git Commit Message Signature
 
-All commits created by core-git follow this signature format:
+All commits created by manager-git follow this signature format:
 
 ```
 https://adk.mo.ai.kr
@@ -1203,4 +1203,4 @@ Protected Branch Conflict (when auto_branch equals false):
 
 ---
 
-core-git provides a simple and stable work environment with direct Git commands instead of complex scripts.
+manager-git provides a simple and stable work environment with direct Git commands instead of complex scripts.

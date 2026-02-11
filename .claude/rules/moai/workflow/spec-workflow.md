@@ -7,7 +7,7 @@ MoAI's three-phase development workflow with token budget management.
 | Phase | Command | Agent | Token Budget | Purpose |
 |-------|---------|-------|--------------|---------|
 | Plan | /moai plan | manager-spec | 30K | Create SPEC document |
-| Run | /moai run | manager-ddd | 180K | DDD implementation |
+| Run | /moai run | manager-ddd/tdd (per quality.yaml) | 180K | DDD/TDD implementation |
 | Sync | /moai sync | manager-docs | 40K | Documentation sync |
 
 ## Plan Phase
@@ -28,21 +28,20 @@ Output:
 
 ## Run Phase
 
-Implement specification using DDD cycle.
+Implement specification using configured development methodology.
 
 Token Strategy:
 - Allocation: 180,000 tokens
 - Selective file loading
 - Enables 70% larger implementations
 
-DDD Cycle:
-1. ANALYZE: Read existing code, identify dependencies, map domain boundaries
-2. PRESERVE: Write characterization tests, capture current behavior
-3. IMPROVE: Make incremental changes, run tests after each change
+Development Methodology:
+- Configured in quality.yaml (development_mode: ddd, tdd, or hybrid)
+- See @workflow-modes.md for detailed methodology cycles
 
 Success Criteria:
 - All SPEC requirements implemented
-- Characterization tests passing
+- Methodology-specific tests passing
 - 85%+ code coverage
 - TRUST 5 quality gates passed
 
@@ -88,3 +87,58 @@ Plan to Run:
 Run to Sync:
 - Trigger: Implementation complete, tests passing
 - Action: Execute /moai sync SPEC-XXX
+
+## Agent Teams Variant
+
+When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases can execute with Agent Teams instead of sub-agents.
+
+### Team Mode Phase Overview
+
+| Phase | Sub-agent Mode | Team Mode | Condition |
+|-------|---------------|-----------|-----------|
+| Plan | manager-spec (single) | researcher + analyst + architect (parallel) | Complexity >= threshold |
+| Run | manager-ddd/tdd (sequential) | backend-dev + frontend-dev + tester (parallel) | Domains >= 3 or files >= 10 |
+| Sync | manager-docs (single) | manager-docs (always sub-agent) | N/A |
+
+### Team Mode Plan Phase
+- TeamCreate for parallel research team
+- Teammates explore codebase, analyze requirements, design approach
+- MoAI synthesizes into SPEC document
+- Shutdown team, /clear before Run phase
+
+### Team Mode Run Phase
+- TeamCreate for implementation team
+- Task decomposition with file ownership boundaries
+- Teammates self-claim tasks from shared list
+- Quality validation after all implementation completes
+- Shutdown team
+
+### Team Workflow References
+
+Detailed team orchestration steps are defined in dedicated workflow files:
+
+- Plan phase: @.claude/skills/moai/workflows/team-plan.md
+- Run phase: @.claude/skills/moai/workflows/team-run.md
+- Fix phase: @.claude/skills/moai/workflows/team-debug.md
+
+
+### Prerequisites
+
+Both conditions must be met for team mode:
+- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in environment or settings.json env
+- `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
+
+If prerequisites are not met, all subcommands gracefully fall back to sub-agent mode.
+
+### Mode Selection
+- --team flag: Force team mode
+- --solo flag: Force sub-agent mode
+- No flag (default): Complexity-based selection
+- See workflow.yaml team.auto_selection for thresholds
+
+### Fallback
+If team mode fails or prerequisites are not met:
+- Graceful fallback to sub-agent mode
+- Continue from last completed task
+- No data loss or state corruption
+- Trigger conditions: AGENT_TEAMS env not set, workflow.team.enabled false, TeamCreate failure, teammate spawn failure

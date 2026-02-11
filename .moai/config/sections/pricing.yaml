@@ -1,5 +1,6 @@
-service:
-  type: claude_subscription
-  pricing_plan: max20
 model_allocation:
-  strategy: auto
+    strategy: auto
+service:
+    glm_pricing_plan: basic
+    pricing_plan: max20
+    type: claude_subscription

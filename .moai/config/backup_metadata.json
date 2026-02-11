@@ -1,0 +1,23 @@
+{
+  "timestamp": "20260211_165535",
+  "description": "config_backup",
+  "backed_up_items": [
+    ".moai/config/config.yaml",
+    ".moai/config/multilingual-triggers.yaml",
+    ".moai/config/sections/git-strategy.yaml",
+    ".moai/config/sections/language.yaml",
+    ".moai/config/sections/llm.yaml",
+    ".moai/config/sections/pricing.yaml",
+    ".moai/config/sections/project.yaml",
+    ".moai/config/sections/quality.yaml",
+    ".moai/config/sections/ralph.yaml",
+    ".moai/config/sections/system.yaml",
+    ".moai/config/sections/user.yaml",
+    ".moai/config/sections/workflow.yaml",
+    ".moai/config/statusline-config.yaml"
+  ],
+  "excluded_items": [],
+  "excluded_dirs": [],
+  "project_root": ".",
+  "backup_type": "config"
+}

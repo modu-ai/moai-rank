@@ -3,7 +3,7 @@ paths:
   - "**/*.rb"
   - "**/Gemfile"
   - "**/Gemfile.lock"
-  - "**/*.rake"
+  - "**/*.gemspec"
 ---
 
 # Ruby Rules
@@ -12,15 +12,43 @@ Version: Ruby 3.3+
 
 ## Tooling
 
-- Linting: rubocop
-- Testing: RSpec or Minitest
 - Package management: Bundler
+- Linting: RuboCop
+- Testing: RSpec or Minitest
+- Coverage: SimpleCov >= 85%
 
-## Preferred Patterns
+## MUST
 
-- Use Rails 7.2 conventions
-- Use Hotwire/Turbo for interactivity
-- Prefer composition over inheritance
+- Use frozen string literals (# frozen_string_literal: true)
+- Use keyword arguments for methods with 3+ params
+- Use pattern matching for complex conditionals
+- Use Sorbet or RBS for type annotations
+- Handle exceptions with specific classes
+- Follow Rails conventions for Rails projects
+
+## MUST NOT
+
+- Monkey-patch core classes without good reason
+- Use eval or send with user input
+- Ignore RuboCop offenses without justification
+- Use global variables ($var)
+- Leave rescue blocks empty
+- Use return nil explicitly
+
+## File Conventions
+
+- *_spec.rb or *_test.rb for test files
+- Use snake_case for files and methods
+- Use PascalCase for classes and modules
+- Use SCREAMING_CASE for constants
+- Group related classes in modules
+
+## Testing
+
+- Use RSpec with let and describe blocks
+- Use FactoryBot for test data
+- Use VCR for HTTP recording
+- Use database_cleaner for isolation
 
 ## MoAI Integration
 

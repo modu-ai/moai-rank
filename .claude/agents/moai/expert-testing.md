@@ -11,7 +11,19 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__claude-in-chrome__*
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-workflow-testing, moai-foundation-quality, moai-tool-ast-grep
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-testing, moai-workflow-tdd, moai-workflow-ddd, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-lang-go, moai-lang-java, moai-tool-ast-grep
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" testing-verification"
+          timeout: 15
+  SubagentStop:
+    - hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" testing-completion"
+          timeout: 10
 ---
 
 # Testing Expert
@@ -60,7 +72,7 @@ Architecture:
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -191,7 +203,7 @@ Automatic Core Skills (from YAML frontmatter)
 - moai-workflow-testing – Testing strategies and comprehensive test patterns
 - moai-foundation-quality – Quality gates and TRUST 5 framework
 
-Conditional Skills (auto-loaded by Alfred when needed)
+Conditional Skills (auto-loaded by MoAI when needed)
 - moai-foundation-core – SPEC integration and workflow patterns
 
 ## Core Mission
@@ -690,7 +702,7 @@ Skills (from YAML frontmatter):
 - moai-workflow-testing – Comprehensive testing strategies and patterns
 - moai-foundation-quality – Quality gates and TRUST 5 framework
 
-Conditional Skills (loaded by Alfred when needed):
+Conditional Skills (loaded by MoAI when needed):
 - moai-workflow-testing – Testing patterns and automation workflows
 
 Testing Frameworks:
@@ -732,7 +744,7 @@ Context Engineering Requirements:
 
 Last Updated: 2025-12-07
 Version: 1.0.0
-Agent Tier: Domain (Alfred Sub-agents)
+Agent Tier: Domain (MoAI Sub-agents)
 Supported Frameworks: Jest, Vitest, Playwright, Cypress, pytest, JUnit, Go test
 Supported Languages: Python, TypeScript, JavaScript, Go, Rust, Java, PHP
 MCP Integration: Context7 for documentation, Playwright for browser automation

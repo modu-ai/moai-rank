@@ -1,9 +1,9 @@
-project:
-  name: moai-rank
-  description: ''
-  type: ''
-  locale: '{{LOCALE}}'
-  created_at: ''
-  initialized: false
 github:
-  profile_name: modu-ai
+    profile_name: modu-ai
+project:
+    created_at: ""
+    description: ""
+    initialized: false
+    locale: '{{LOCALE}}'
+    name: moai-rank
+    type: ""

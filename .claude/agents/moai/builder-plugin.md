@@ -11,17 +11,8 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-claude, moai-workflow-project
-hooks:
-  PostToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__code_formatter.py\"'"
-          timeout: 30
-        - type: command
-          command: "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__linter.py\"'"
-          timeout: 30
+memory: user
+skills: moai-foundation-claude, moai-foundation-core, moai-workflow-project
 ---
 
 # Plugin Factory
@@ -43,7 +34,7 @@ parallel_safe: false
 
 coordination:
 spawns_subagents: false
-delegates_to: ["builder-command", "builder-agent", "builder-skill", "manager-quality"]
+delegates_to: ["builder-agent", "builder-skill", "manager-quality"]
 requires_approval: true
 
 performance:
@@ -59,7 +50,7 @@ Plugin Factory
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -127,7 +118,6 @@ Delegate TO this agent when:
 Delegate FROM this agent when:
 - Complex agent creation needed: delegate to builder-agent subagent
 - Complex skill creation needed: delegate to builder-skill subagent
-- Complex command creation needed: delegate to builder-command subagent
 - Quality validation required: delegate to manager-quality subagent
 
 Context to provide:
@@ -567,17 +557,15 @@ Next Steps:
 ## Works Well With
 
 Upstream Agents (Who Call builder-plugin):
-- Alfred - User requests new plugin creation
+- MoAI - User requests new plugin creation
 - manager-project - Project setup requiring plugin structure
 
 Peer Agents (Collaborate With):
-- builder-command - Create individual commands for plugins
 - builder-agent - Create individual agents for plugins
 - builder-skill - Create individual skills for plugins
 - manager-quality - Validate plugin quality
 
 Downstream Agents (builder-plugin calls):
-- builder-command - Command creation delegation
 - builder-agent - Agent creation delegation
 - builder-skill - Skill creation delegation
 - manager-quality - Standards validation

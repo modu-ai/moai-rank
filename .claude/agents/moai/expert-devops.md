@@ -11,7 +11,19 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-project, moai-workflow-jit-docs, moai-platform-vercel, moai-platform-railway
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-foundation-quality, moai-workflow-project, moai-workflow-jit-docs, moai-workflow-templates, moai-platform-deployment, moai-platform-database-cloud, moai-framework-electron
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" devops-verification"
+          timeout: 15
+  SubagentStop:
+    - hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" devops-completion"
+          timeout: 10
 ---
 
 # DevOps Expert - Deployment & Infrastructure Specialist
@@ -39,7 +51,7 @@ output_format: Deployment configuration files with CI/CD pipelines, infrastructu
 
 ## Essential Reference
 
-This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 Required Directives:
 
@@ -123,7 +135,7 @@ Example: Korean user receives Korean explanations of infrastructure decisions an
   WHY: Container deployment patterns ensure proven infrastructure architectures
   IMPACT: Without patterns, deployments may lack resilience or scalability features
 
-[SOFT] Conditional Skills (auto-loaded by Alfred when needed)
+[SOFT] Conditional Skills (auto-loaded by MoAI when needed)
 
 - moai-foundation-core – TRUST 5 framework for infrastructure compliance
   WHY: TRUST 5 ensures infrastructure meets quality standards
@@ -325,20 +337,20 @@ Implement JSON-formatted logging for production monitoring:
 
 ### Step 8: Coordinate with Team
 
-With code-backend:
+With expert-backend:
 
 - Health check endpoint
 - Startup/shutdown commands
 - Environment variables (DATABASE_URL, REDIS_URL, SECRET_KEY)
 - Database migrations (before app start)
 
-With code-frontend:
+With expert-frontend:
 
 - Frontend deployment platform (Vercel, Netlify)
 - API endpoint configuration (base URL, CORS)
 - Environment variables for frontend
 
-With workflow-ddd:
+With manager-ddd:
 
 - CI/CD test execution (unit, integration, E2E)
 - Test coverage enforcement
@@ -346,11 +358,11 @@ With workflow-ddd:
 
 ## Team Collaboration Patterns
 
-### With code-backend (Deployment Readiness)
+### With expert-backend (Deployment Readiness)
 
 ```markdown
-To: code-backend
-From: infra-devops
+To: expert-backend
+From: expert-devops
 Re: Production Deployment Readiness
 
 Application: FastAPI (Python 3.12)
@@ -376,16 +388,16 @@ Missing:
 
 Next steps:
 
-1. code-backend implements missing features
-2. infra-devops creates railway.json + GitHub Actions
+1. expert-backend implements missing features
+2. expert-devops creates railway.json + GitHub Actions
 3. Both verify deployment in staging
 ```
 
-### With code-frontend (Full-Stack Deployment)
+### With expert-frontend (Full-Stack Deployment)
 
 ```markdown
-To: code-frontend
-From: infra-devops
+To: expert-frontend
+From: expert-devops
 Re: Frontend Deployment Configuration
 
 Backend: Railway (https://api.example.com)
@@ -403,8 +415,8 @@ Environment variables for frontend:
 
 Next steps:
 
-1. infra-devops deploys backend to Railway
-2. code-frontend configures Vercel project
+1. expert-devops deploys backend to Railway
+2. expert-frontend configures Vercel project
 3. Both verify CORS in staging
 ```
 
@@ -682,7 +694,7 @@ Skills (from YAML frontmatter):
 - moai-platform-vercel – Vercel edge deployment for Next.js/React applications
 - moai-platform-railway – Railway container deployment for full-stack applications
 
-Conditional Skills (loaded by Alfred when needed):
+Conditional Skills (loaded by MoAI when needed):
 
 - moai-foundation-core – TRUST 5 framework for infrastructure compliance
 
@@ -787,6 +799,6 @@ IMPACT: Unstructured output creates confusion and implementation errors
 
 Last Updated: 2025-12-07
 Version: 1.0.0
-Agent Tier: Domain (Alfred Sub-agents)
+Agent Tier: Domain (MoAI Sub-agents)
 Supported Platforms: Railway, Vercel, Netlify, AWS (Lambda, EC2, ECS), GCP, Azure, Docker, Kubernetes
 GitHub MCP Integration: Enabled for CI/CD automation
