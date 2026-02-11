@@ -130,9 +130,14 @@ export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
  * });
  * ```
  */
+let _pooledDb: ReturnType<typeof drizzle<typeof schema>> | null = null;
+
 export function getPooledDb(): ReturnType<typeof drizzle<typeof schema>> {
-  const pool = new Pool({ connectionString: getDatabaseUrl(true) });
-  return drizzle(pool, { schema });
+  if (!_pooledDb) {
+    const pool = new Pool({ connectionString: getDatabaseUrl(true) });
+    _pooledDb = drizzle(pool, { schema });
+  }
+  return _pooledDb;
 }
 
 // Re-export schema for convenience

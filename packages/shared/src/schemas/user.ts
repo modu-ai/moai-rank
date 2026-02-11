@@ -43,6 +43,7 @@ export const CreateSessionSchema = SessionSchema.omit({
   endedAt: true,
 }).extend({
   isActive: z.boolean().default(true),
+  deviceId: z.string().max(128).optional(),
 });
 
 export type UserSchemaType = z.infer<typeof UserSchema>;

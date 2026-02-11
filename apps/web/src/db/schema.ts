@@ -65,6 +65,7 @@ export const sessions = pgTable(
     // Model usage breakdown: {"claude-opus-4": {"input": 5000, "output": 2000}, ...}
     modelUsageDetails:
       jsonb('model_usage_details').$type<Record<string, { input: number; output: number }>>(),
+    deviceId: varchar('device_id', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
@@ -114,7 +115,11 @@ export const dailyAggregates = pgTable(
     avgEfficiency: decimal('avg_efficiency', { precision: 5, scale: 4 }),
     compositeScore: decimal('composite_score', { precision: 12, scale: 4 }),
   },
-  (table) => [unique().on(table.userId, table.date)]
+  (table) => [
+    unique().on(table.userId, table.date),
+    index("daily_aggregates_user_date_idx").on(table.userId, table.date),
+    index("daily_aggregates_user_id_idx").on(table.userId),
+  ]
 );
 
 /**

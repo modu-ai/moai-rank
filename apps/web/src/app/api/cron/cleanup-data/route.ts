@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
-import { getPooledDb, tokenUsage, dailyAggregates, rankings, sessions } from '@/db';
-import { lt, and, eq } from 'drizzle-orm';
+import { getPooledDb, tokenUsage, dailyAggregates, rankings, sessions, securityAuditLog } from '@/db';
+import { lt, and, eq, inArray } from 'drizzle-orm';
 import { successResponse, Errors } from '@/lib/api-response';
 
 /**
@@ -11,6 +11,7 @@ import { successResponse, Errors } from '@/lib/api-response';
  * - daily_aggregates: delete where date < 90 days ago
  * - rankings: delete where periodType='daily' AND periodStart < 30 days ago
  * - sessions: delete where startedAt < 90 days ago
+ * - security_audit_log: delete where createdAt < 180 days ago
  *
  * Optimizations applied:
  * - Uses Connection Pooler for batch operations
@@ -81,6 +82,9 @@ export async function GET(request: NextRequest) {
 
     const sessionsResult = await cleanupSessions();
     results.push(sessionsResult);
+
+    const auditLogResult = await cleanupAuditLog();
+    results.push(auditLogResult);
 
     const totalDeleted = results.reduce((sum, r) => sum + r.deletedCount, 0);
 
@@ -268,6 +272,49 @@ async function cleanupSessions(): Promise<CleanupResult> {
 
   return {
     table: 'sessions',
+    deletedCount,
+    duration,
+  };
+}
+
+/**
+ * Cleanup security_audit_log records older than 180 days
+ */
+async function cleanupAuditLog(): Promise<CleanupResult> {
+  const startTime = Date.now();
+  const pooledDb = getPooledDb();
+  let deletedCount = 0;
+
+  // Calculate cutoff date (180 days ago)
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 180);
+
+  console.log(`[CRON CLEANUP] Cleaning up security_audit_log older than ${cutoffDate.toISOString()}`);
+
+  while (true) {
+    // First, find a batch of IDs to delete
+    const idsToDelete = await pooledDb
+      .select({ id: securityAuditLog.id })
+      .from(securityAuditLog)
+      .where(lt(securityAuditLog.createdAt, cutoffDate))
+      .limit(BATCH_SIZE);
+
+    if (idsToDelete.length === 0) break;
+
+    const ids = idsToDelete.map((row) => row.id);
+    await pooledDb
+      .delete(securityAuditLog)
+      .where(inArray(securityAuditLog.id, ids));
+
+    deletedCount += ids.length;
+    console.log(`[CRON CLEANUP] security_audit_log: Deleted ${deletedCount} records so far...`);
+  }
+
+  const duration = Date.now() - startTime;
+  console.log(`[CRON CLEANUP] security_audit_log: Deleted ${deletedCount} records in ${duration}ms`);
+
+  return {
+    table: 'security_audit_log',
     deletedCount,
     duration,
   };

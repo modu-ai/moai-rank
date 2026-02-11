@@ -16,6 +16,8 @@ import { delPattern } from '@/lib/cache';
  * - V010: Per-period error isolation and independent streak calculation
  * - V011: Optimized aggregation query with direct token_usage scan
  * - V012: Per-period cache invalidation and independent daily aggregates
+ * - V014: Uses daily_aggregates for weekly/monthly/all_time periods
+ *         instead of scanning raw token_usage (massive performance gain)
  */
 
 // Maximum execution time for the cron job (requires Pro plan for > 10s)
@@ -165,6 +167,75 @@ export async function GET(request: NextRequest): Promise<Response> {
 }
 
 /**
+ * V014: Fetch per-user stats from raw token_usage table.
+ *
+ * Used for the 'daily' period where same-day data may not yet exist
+ * in daily_aggregates (since updateDailyAggregates runs AFTER rankings).
+ */
+async function fetchStatsFromTokenUsage(
+  periodStart: string,
+  periodEnd: string
+): Promise<Array<{ userId: string | null; totalInputTokens: number; totalOutputTokens: number; sessionCount: number }>> {
+  return db
+    .select({
+      userId: tokenUsage.userId,
+      totalInputTokens: sql<number>`COALESCE(SUM(${tokenUsage.inputTokens}), 0)`,
+      totalOutputTokens: sql<number>`COALESCE(SUM(${tokenUsage.outputTokens}), 0)`,
+      sessionCount: sql<number>`COUNT(DISTINCT ${tokenUsage.sessionId})`,
+    })
+    .from(tokenUsage)
+    .where(
+      and(
+        gte(tokenUsage.recordedAt, new Date(periodStart)),
+        sql`${tokenUsage.recordedAt} < ${new Date(periodEnd)}`,
+        sql`${tokenUsage.userId} IS NOT NULL`
+      )
+    )
+    .groupBy(tokenUsage.userId)
+    .having(sql`COALESCE(SUM(${tokenUsage.inputTokens}), 0) > 0`);
+}
+
+/**
+ * V014: Fetch per-user stats from daily_aggregates table.
+ *
+ * Used for weekly, monthly, and all_time periods. Instead of scanning
+ * potentially millions of raw token_usage rows, this queries the
+ * pre-computed daily_aggregates table which has one row per user per day.
+ *
+ * Performance impact:
+ * - weekly:   ~7 rows per user   vs. hundreds/thousands of token_usage rows
+ * - monthly:  ~30 rows per user  vs. thousands of token_usage rows
+ * - all_time: ~N days per user   vs. full table scan of token_usage
+ */
+async function fetchStatsFromDailyAggregates(
+  period: PeriodType,
+  periodStart: string,
+  periodEnd: string
+): Promise<Array<{ userId: string | null; totalInputTokens: number; totalOutputTokens: number; sessionCount: number }>> {
+  return db
+    .select({
+      userId: dailyAggregates.userId,
+      totalInputTokens: sql<number>`COALESCE(SUM(${dailyAggregates.totalInputTokens}), 0)`,
+      totalOutputTokens: sql<number>`COALESCE(SUM(${dailyAggregates.totalOutputTokens}), 0)`,
+      sessionCount: sql<number>`COALESCE(SUM(${dailyAggregates.sessionCount}), 0)`,
+    })
+    .from(dailyAggregates)
+    .where(
+      and(
+        period === 'all_time'
+          ? sql`1=1`
+          : and(
+              gte(dailyAggregates.date, periodStart),
+              sql`${dailyAggregates.date} < ${periodEnd}`
+            ),
+        sql`${dailyAggregates.userId} IS NOT NULL`
+      )
+    )
+    .groupBy(dailyAggregates.userId)
+    .having(sql`COALESCE(SUM(${dailyAggregates.totalInputTokens}), 0) > 0`);
+}
+
+/**
  * Calculate rankings for a specific period
  *
  * V013: Uses yesterday's date as the base for ranking calculation.
@@ -174,8 +245,11 @@ export async function GET(request: NextRequest): Promise<Response> {
  * V010: Accepts pre-calculated streak data and pooledDb instance
  * to avoid redundant calculations across periods.
  *
- * V011: Uses optimized query pattern - queries token_usage directly
- * instead of LEFT JOIN users, filtering by userId IS NOT NULL.
+ * V014: Data source selection by period type:
+ * - daily:    token_usage       (same-day data may not be aggregated yet)
+ * - weekly:   daily_aggregates  (SUM of ~7 daily rows per user)
+ * - monthly:  daily_aggregates  (SUM of ~30 daily rows per user)
+ * - all_time: daily_aggregates  (SUM of all daily rows per user)
  */
 async function calculateRankingsForPeriod(
   period: PeriodType,
@@ -192,31 +266,12 @@ async function calculateRankingsForPeriod(
   const periodEnd = getPeriodEnd(period, yesterday);
   const now = yesterday; // Use yesterday for updatedAt timestamp
 
-  // V011: Optimized query - scan token_usage directly instead of LEFT JOIN users
-  // This avoids scanning all users even those with no activity.
-  // Group by userId and filter where inputTokens > 0, which naturally excludes
-  // users with no token usage in this period.
-  const rawStats = await db
-    .select({
-      userId: tokenUsage.userId,
-      totalInputTokens: sql<number>`COALESCE(SUM(${tokenUsage.inputTokens}), 0)`,
-      totalOutputTokens: sql<number>`COALESCE(SUM(${tokenUsage.outputTokens}), 0)`,
-      sessionCount: sql<number>`COUNT(DISTINCT ${tokenUsage.sessionId})`,
-    })
-    .from(tokenUsage)
-    .where(
-      and(
-        period === 'all_time'
-          ? sql`1=1`
-          : and(
-              gte(tokenUsage.recordedAt, new Date(periodStart)),
-              sql`${tokenUsage.recordedAt} < ${new Date(periodEnd)}`
-            ),
-        sql`${tokenUsage.userId} IS NOT NULL`
-      )
-    )
-    .groupBy(tokenUsage.userId)
-    .having(sql`COALESCE(SUM(${tokenUsage.inputTokens}), 0) > 0`);
+  // V014: Choose data source based on period type
+  // - daily: Use raw token_usage (same-day data may not be in daily_aggregates yet)
+  // - weekly/monthly/all_time: Use daily_aggregates for dramatically faster queries
+  const rawStats = period === 'daily'
+    ? await fetchStatsFromTokenUsage(periodStart, periodEnd)
+    : await fetchStatsFromDailyAggregates(period, periodStart, periodEnd);
 
   // Filter null userIds for type safety (SQL WHERE already excludes them)
   const userStats = rawStats.filter(
@@ -301,7 +356,7 @@ async function calculateRankingsForPeriod(
   }
 
   console.log(
-    `[CRON] ${period}: Processed ${scoredUsers.length} users in ${Math.ceil(scoredUsers.length / BATCH_SIZE)} batches`
+    `[CRON] ${period}: Processed ${scoredUsers.length} users, source=${period === 'daily' ? 'token_usage' : 'daily_aggregates'}, batches=${Math.ceil(scoredUsers.length / BATCH_SIZE)}`
   );
 
   return {

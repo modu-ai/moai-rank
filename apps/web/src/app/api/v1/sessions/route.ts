@@ -108,6 +108,7 @@ const CreateSessionSchema = z.object({
   turnCount: z.number().int().min(0).max(10000).optional(),
   toolUsage: z.record(z.string(), z.number().int().min(0)).optional(),
   codeMetrics: CodeMetricsSchema.optional(),
+  deviceId: z.string().max(128).optional(),
 });
 
 /**
@@ -301,6 +302,7 @@ export async function POST(request: NextRequest) {
         turnCount: sessionData.turnCount,
         toolUsage: sessionData.toolUsage,
         codeMetrics: sessionData.codeMetrics,
+        deviceId: sessionData.deviceId,
       })
       .returning({ id: sessions.id });
 

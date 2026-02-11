@@ -58,6 +58,7 @@ const BatchSessionSchema = z.object({
   turnCount: z.number().int().min(0).max(10000).optional(),
   toolUsage: z.record(z.string(), z.number().int().min(0)).optional(),
   codeMetrics: CodeMetricsSchema.optional(),
+  deviceId: z.string().max(128).optional(),
 });
 
 const BatchRequestSchema = z.object({
@@ -227,6 +228,7 @@ export async function POST(request: NextRequest) {
       turnCount: s.data.turnCount,
       toolUsage: s.data.toolUsage,
       codeMetrics: s.data.codeMetrics,
+      deviceId: s.data.deviceId,
     }));
 
     const insertedSessions = await db
