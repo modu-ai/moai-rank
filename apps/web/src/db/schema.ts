@@ -112,8 +112,10 @@ export const dailyAggregates = pgTable(
     totalOutputTokens: bigint('total_output_tokens', { mode: 'number' }).default(0),
     totalCacheTokens: bigint('total_cache_tokens', { mode: 'number' }).default(0),
     sessionCount: integer('session_count').default(0),
-    avgEfficiency: decimal('avg_efficiency', { precision: 5, scale: 4 }),
+    avgEfficiency: decimal('avg_efficiency', { precision: 7, scale: 4 }),
     compositeScore: decimal('composite_score', { precision: 12, scale: 4 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
     unique().on(table.userId, table.date),
@@ -137,7 +139,7 @@ export const rankings = pgTable(
     totalTokens: bigint('total_tokens', { mode: 'number' }).notNull(),
     compositeScore: decimal('composite_score', { precision: 12, scale: 4 }).notNull(),
     sessionCount: integer('session_count').notNull(),
-    efficiencyScore: decimal('efficiency_score', { precision: 5, scale: 4 }),
+    efficiencyScore: decimal('efficiency_score', { precision: 7, scale: 4 }),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
