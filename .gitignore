@@ -140,6 +140,7 @@ logs/
 *-secret-key.*
 *-api-key.*
 api-key-*
+!**/api-key-card.tsx
 secret-key-*
 private-key*
 *-secret.*
