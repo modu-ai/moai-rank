@@ -78,6 +78,22 @@ export async function GET(request: NextRequest): Promise<Response> {
     const results: RankingCalculationResult[] = [];
     const periods: PeriodType[] = ['daily', 'weekly', 'monthly', 'all_time'];
 
+    // V010: Create pooledDb ONCE before the period loop
+    const pooledDb = getPooledDb();
+
+    // Fix C: Update daily aggregates BEFORE rankings calculation to avoid race condition
+    // daily_aggregates must be up-to-date before weekly/monthly/all_time rankings use them
+    try {
+      console.log('[CRON] Updating daily aggregates (before rankings calculation)...');
+      const aggregateStartTime = Date.now();
+      await updateDailyAggregates(pooledDb);
+      const aggregateTimeMs = Date.now() - aggregateStartTime;
+      console.log(`[CRON] Daily aggregates updated in ${aggregateTimeMs}ms`);
+    } catch (aggregateError) {
+      console.error('[CRON] Daily aggregates update failed:', aggregateError);
+      // Continue even if daily aggregates fail - rankings are more important
+    }
+
     // V010: Calculate streaks ONCE before the period loop
     // Instead of recalculating for each period, share the same streak data
     console.log('[CRON] Calculating streaks (shared across all periods)...');
@@ -85,9 +101,6 @@ export async function GET(request: NextRequest): Promise<Response> {
     const streakData = await calculateStreaks();
     const streakTimeMs = Date.now() - streakStartTime;
     console.log(`[CRON] Streak calculation completed in ${streakTimeMs}ms for ${streakData.size} users`);
-
-    // V010: Create pooledDb ONCE before the period loop
-    const pooledDb = getPooledDb();
 
     // V010: Per-period error isolation - each period runs independently
     for (const period of periods) {
@@ -127,18 +140,6 @@ export async function GET(request: NextRequest): Promise<Response> {
         });
         // Continue to next period instead of failing entirely
       }
-    }
-
-    // V010: Daily aggregates independent - runs in its own try-catch
-    try {
-      console.log('[CRON] Updating daily aggregates...');
-      const aggregateStartTime = Date.now();
-      await updateDailyAggregates(pooledDb);
-      const aggregateTimeMs = Date.now() - aggregateStartTime;
-      console.log(`[CRON] Daily aggregates updated in ${aggregateTimeMs}ms`);
-    } catch (aggregateError) {
-      console.error('[CRON] Daily aggregates update failed:', aggregateError);
-      // Continue even if daily aggregates fail - rankings are more important
     }
 
     // V010: Return summary with per-period status
@@ -312,28 +313,39 @@ async function calculateRankingsForPeriod(
     };
   });
 
-  // Sort by composite score descending
-  scoredUsers.sort((a, b) => b.compositeScore - a.compositeScore);
+  // Sort by composite score descending, with userId as stable tiebreaker
+  scoredUsers.sort((a, b) => b.compositeScore - a.compositeScore || a.userId.localeCompare(b.userId));
 
   // V009: Batch upsert rankings instead of N+1 pattern
   // Process in batches for better performance
   let rankingsUpdated = 0;
 
+  // Fix B: Track last score and rank for tie-breaking (equal scores get equal rank)
+  let lastScore = -1;
+  let lastRank = 0;
+
   for (const batchStart of Array.from({ length: Math.ceil(scoredUsers.length / BATCH_SIZE) }, (_, i) => i * BATCH_SIZE)) {
     const batch = scoredUsers.slice(batchStart, batchStart + BATCH_SIZE);
 
-    // Prepare batch values with rank positions
-    const batchValues = batch.map((user, index) => ({
-      userId: user.userId,
-      periodType: period,
-      periodStart: periodStart, // date column expects ISO date string (YYYY-MM-DD)
-      rankPosition: batchStart + index + 1,
-      totalTokens: user.totalTokens,
-      compositeScore: user.compositeScore.toString(),
-      sessionCount: user.sessionCount,
-      efficiencyScore: user.efficiencyScore.toString(),
-      updatedAt: now,
-    }));
+    // Prepare batch values with rank positions, applying tie-breaking logic
+    const batchValues = batch.map((user, index) => {
+      const globalIndex = batchStart + index;
+      if (user.compositeScore !== lastScore) {
+        lastRank = globalIndex + 1;
+        lastScore = user.compositeScore;
+      }
+      return {
+        userId: user.userId,
+        periodType: period,
+        periodStart: periodStart, // date column expects ISO date string (YYYY-MM-DD)
+        rankPosition: lastRank,
+        totalTokens: user.totalTokens,
+        compositeScore: user.compositeScore.toString(),
+        sessionCount: user.sessionCount,
+        efficiencyScore: user.efficiencyScore.toString(),
+        updatedAt: now,
+      };
+    });
 
     // Batch upsert using raw SQL for optimal performance
     // PostgreSQL's INSERT ... ON CONFLICT with multiple rows
@@ -370,30 +382,52 @@ async function calculateRankingsForPeriod(
 
 /**
  * Calculate activity streaks for all users
- * Returns a map of userId -> streak days
+ * Returns a map of userId -> consecutive streak days
+ *
+ * Fix A: Calculates actual consecutive days streak instead of counting
+ * distinct active days in last 30 days. A streak is only "current" if
+ * the user was active today OR yesterday (within last 2 days).
  *
  * V010: Called ONCE before the period loop to avoid redundant
- * stripe calculations. Result is shared across all periods.
+ * streak calculations. Result is shared across all periods.
  */
 async function calculateStreaks(): Promise<Map<string, number>> {
   const streakMap = new Map<string, number>();
 
-  // Get distinct active days per user in last 30 days
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  // Use SQL to calculate consecutive streaks via gap-and-island pattern.
+  // Subtracting the ROW_NUMBER from the date creates a constant "grp" value
+  // for consecutive days, which we can then GROUP BY to find streak lengths.
+  const currentStreaks = await db.execute(sql`
+    WITH ordered_dates AS (
+      SELECT DISTINCT user_id, DATE(recorded_at) AS activity_date
+      FROM token_usage
+      WHERE user_id IS NOT NULL
+    ),
+    numbered AS (
+      SELECT user_id, activity_date,
+        activity_date - (ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY activity_date))::int AS grp
+      FROM ordered_dates
+    ),
+    streak_groups AS (
+      SELECT user_id, grp, COUNT(*) AS streak_len, MAX(activity_date) AS last_active
+      FROM numbered
+      GROUP BY user_id, grp
+    ),
+    current_streaks AS (
+      SELECT DISTINCT ON (user_id) user_id, streak_len
+      FROM streak_groups
+      WHERE last_active >= CURRENT_DATE - INTERVAL '1 day'
+      ORDER BY user_id, last_active DESC
+    )
+    SELECT user_id, streak_len AS streak
+    FROM current_streaks
+  `);
 
-  const activeDays = await db
-    .select({
-      userId: tokenUsage.userId,
-      activeDays: sql<number>`COUNT(DISTINCT DATE(${tokenUsage.recordedAt}))`,
-    })
-    .from(tokenUsage)
-    .where(and(gte(tokenUsage.recordedAt, thirtyDaysAgo), sql`${tokenUsage.userId} IS NOT NULL`))
-    .groupBy(tokenUsage.userId);
-
-  for (const row of activeDays) {
-    if (row.userId) {
-      streakMap.set(row.userId, Number(row.activeDays));
+  for (const row of currentStreaks.rows) {
+    const userId = row.user_id as string;
+    const streak = Number(row.streak);
+    if (userId) {
+      streakMap.set(userId, streak);
     }
   }
 

@@ -4,6 +4,20 @@ import { eq, desc, sql, and, gte } from 'drizzle-orm';
 import { successResponse, Errors, corsOptionsResponse } from '@/lib/api-response';
 import { checkPublicRateLimit, extractIpAddress } from '@/lib/rate-limiter';
 
+/** Distributes 100% among values using largest-remainder method to ensure sum = 100 */
+function distributePercentages(counts: number[]): number[] {
+  const total = counts.reduce((a, b) => a + b, 0);
+  if (total === 0) return counts.map(() => 0);
+  const exact = counts.map(c => (c / total) * 100);
+  const floors = exact.map(Math.floor);
+  const remainder = 100 - floors.reduce((a, b) => a + b, 0);
+  const indices = exact
+    .map((v, i) => ({ diff: v - floors[i], i }))
+    .sort((a, b) => b.diff - a.diff);
+  for (let k = 0; k < remainder; k++) floors[indices[k].i]++;
+  return floors;
+}
+
 /**
  * Daily activity data for heatmap
  */
@@ -237,7 +251,7 @@ export async function GET(
     const outputTokens = Number(tokenData?.outputTokens ?? 0);
     const cacheCreationTokens = Number(tokenData?.cacheCreationTokens ?? 0);
     const cacheReadTokens = Number(tokenData?.cacheReadTokens ?? 0);
-    const totalTokens = inputTokens + outputTokens;
+    const totalTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
 
     // Calculate estimated cost (using Claude Sonnet 4 pricing as default)
     // Input: $3/MTok, Output: $15/MTok, Cache Creation: $3.75/MTok, Cache Read: $0.30/MTok
@@ -268,15 +282,15 @@ export async function GET(
 
     const totalModelSessions = modelUsageResult.reduce((sum, m) => sum + Number(m.sessionCount), 0);
 
-    const modelUsage: ModelUsage[] = modelUsageResult
-      .filter((m) => m.modelName)
-      .map((m) => ({
+    const filteredModels = modelUsageResult.filter((m) => m.modelName);
+    const modelCounts = filteredModels.map((m) => Number(m.sessionCount));
+    const modelPercentages = distributePercentages(modelCounts);
+
+    const modelUsage: ModelUsage[] = filteredModels
+      .map((m, i) => ({
         modelName: m.modelName ?? 'unknown',
         sessionCount: Number(m.sessionCount),
-        percentage:
-          totalModelSessions > 0
-            ? Math.round((Number(m.sessionCount) / totalModelSessions) * 100)
-            : 0,
+        percentage: totalModelSessions > 0 ? modelPercentages[i] : 0,
       }))
       .sort((a, b) => b.sessionCount - a.sessionCount);
 
@@ -362,22 +376,22 @@ export async function GET(
     // Calculate hourly activity pattern from sessions
     const hourlyActivityResult = await db
       .select({
-        hour: sql<number>`EXTRACT(HOUR FROM ${sessions.endedAt})`,
+        hour: sql<number>`EXTRACT(HOUR FROM (${sessions.endedAt} AT TIME ZONE 'UTC'))`,
         sessionCount: sql<number>`COUNT(*)`,
       })
       .from(sessions)
       .where(eq(sessions.userId, user.id))
-      .groupBy(sql`EXTRACT(HOUR FROM ${sessions.endedAt})`);
+      .groupBy(sql`EXTRACT(HOUR FROM (${sessions.endedAt} AT TIME ZONE 'UTC'))`);
 
     // Get hourly token data from tokenUsage
     const hourlyTokenResult = await db
       .select({
-        hour: sql<number>`EXTRACT(HOUR FROM ${tokenUsage.recordedAt})`,
+        hour: sql<number>`EXTRACT(HOUR FROM (${tokenUsage.recordedAt} AT TIME ZONE 'UTC'))`,
         tokens: sql<number>`COALESCE(SUM(${tokenUsage.inputTokens} + ${tokenUsage.outputTokens}), 0)`,
       })
       .from(tokenUsage)
       .where(eq(tokenUsage.userId, user.id))
-      .groupBy(sql`EXTRACT(HOUR FROM ${tokenUsage.recordedAt})`);
+      .groupBy(sql`EXTRACT(HOUR FROM (${tokenUsage.recordedAt} AT TIME ZONE 'UTC'))`);
 
     // Merge hourly data and fill missing hours with zeros
     const hourlyMap = new Map<number, { tokens: number; sessions: number }>();
@@ -408,21 +422,21 @@ export async function GET(
 
     const dayOfWeekResult = await db
       .select({
-        dayOfWeek: sql<number>`EXTRACT(DOW FROM ${sessions.endedAt})`,
+        dayOfWeek: sql<number>`EXTRACT(DOW FROM (${sessions.endedAt} AT TIME ZONE 'UTC'))`,
         sessionCount: sql<number>`COUNT(*)`,
       })
       .from(sessions)
       .where(eq(sessions.userId, user.id))
-      .groupBy(sql`EXTRACT(DOW FROM ${sessions.endedAt})`);
+      .groupBy(sql`EXTRACT(DOW FROM (${sessions.endedAt} AT TIME ZONE 'UTC'))`);
 
     const dayOfWeekTokenResult = await db
       .select({
-        dayOfWeek: sql<number>`EXTRACT(DOW FROM ${tokenUsage.recordedAt})`,
+        dayOfWeek: sql<number>`EXTRACT(DOW FROM (${tokenUsage.recordedAt} AT TIME ZONE 'UTC'))`,
         tokens: sql<number>`COALESCE(SUM(${tokenUsage.inputTokens} + ${tokenUsage.outputTokens}), 0)`,
       })
       .from(tokenUsage)
       .where(eq(tokenUsage.userId, user.id))
-      .groupBy(sql`EXTRACT(DOW FROM ${tokenUsage.recordedAt})`);
+      .groupBy(sql`EXTRACT(DOW FROM (${tokenUsage.recordedAt} AT TIME ZONE 'UTC'))`);
 
     // Merge day of week data
     const dayMap = new Map<number, { tokens: number; sessions: number }>();
@@ -522,14 +536,16 @@ export async function GET(
     }
 
     const totalToolUsage = Array.from(toolCounts.values()).reduce((sum, count) => sum + count, 0);
-    const toolUsagePatterns: ToolUsagePattern[] = Array.from(toolCounts.entries())
-      .map(([toolName, count]) => ({
-        toolName,
-        count,
-        percentage: totalToolUsage > 0 ? Math.round((count / totalToolUsage) * 100) : 0,
-      }))
-      .sort((a, b) => b.count - a.count)
+    const sortedToolEntries = Array.from(toolCounts.entries())
+      .sort((a, b) => b[1] - a[1])
       .slice(0, 10); // Top 10 tools
+    const toolCountsSliced = sortedToolEntries.map(([, count]) => count);
+    const toolPercentages = distributePercentages(toolCountsSliced);
+    const toolUsagePatterns: ToolUsagePattern[] = sortedToolEntries.map(([toolName, count], i) => ({
+      toolName,
+      count,
+      percentage: totalToolUsage > 0 ? toolPercentages[i] : 0,
+    }));
 
     // Calculate Vibe Style
     let vibeStyle: VibeStyle | null = null;
@@ -555,13 +571,16 @@ export async function GET(
       else if (maxScore === refactorerScore) primaryStyle = 'Refactorer';
       else if (maxScore === automatorScore) primaryStyle = 'Automator';
 
+      const vibeScoreCounts = [explorerScore, creatorScore, refactorerScore, automatorScore];
+      const vibePercentages = distributePercentages(vibeScoreCounts);
+
       vibeStyle = {
         primaryStyle,
         styleScores: {
-          explorer: Math.round((explorerScore / totalToolUsage) * 100),
-          creator: Math.round((creatorScore / totalToolUsage) * 100),
-          refactorer: Math.round((refactorerScore / totalToolUsage) * 100),
-          automator: Math.round((automatorScore / totalToolUsage) * 100),
+          explorer: vibePercentages[0],
+          creator: vibePercentages[1],
+          refactorer: vibePercentages[2],
+          automator: vibePercentages[3],
         },
         avgSessionDuration:
           totalSessionCount > 0 ? Math.round(totalDuration / totalSessionCount) : 0,

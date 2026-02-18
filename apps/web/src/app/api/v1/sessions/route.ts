@@ -106,7 +106,7 @@ const CreateSessionSchema = z.object({
   startedAt: z.string().datetime().optional(),
   durationSeconds: z.number().int().min(0).max(604800).optional(), // Max 7 days
   turnCount: z.number().int().min(0).max(10000).optional(),
-  toolUsage: z.record(z.string(), z.number().int().min(0)).optional(),
+  toolUsage: z.record(z.string(), z.number().int().min(0)).optional().default({}),
   codeMetrics: CodeMetricsSchema.optional(),
   deviceId: z.string().max(128).optional(),
 });
@@ -300,7 +300,7 @@ export async function POST(request: NextRequest) {
         durationSeconds: sessionData.durationSeconds,
         modelName: sessionData.modelName,
         turnCount: sessionData.turnCount,
-        toolUsage: sessionData.toolUsage,
+        toolUsage: sessionData.toolUsage ?? {},
         codeMetrics: sessionData.codeMetrics,
         deviceId: sessionData.deviceId,
       })

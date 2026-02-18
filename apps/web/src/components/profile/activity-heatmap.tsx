@@ -64,7 +64,7 @@ export function ActivityHeatmap({ dailyActivity, className }: ActivityHeatmapPro
     const today = new Date();
     const endDate = new Date(today);
     const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - 364); // Go back 364 days
+    startDate.setDate(startDate.getDate() - 363); // Go back 363 days so today + 363 = 364 days (52 weeks)
 
     // Adjust to start from Sunday
     const startDayOfWeek = startDate.getDay();

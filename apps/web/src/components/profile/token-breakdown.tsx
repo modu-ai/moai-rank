@@ -18,6 +18,20 @@ interface TokenBreakdownCardProps {
   className?: string;
 }
 
+/** Distributes 100% among values using largest-remainder method to ensure sum = 100 */
+function distributePercentages(counts: number[]): number[] {
+  const total = counts.reduce((a, b) => a + b, 0);
+  if (total === 0) return counts.map(() => 0);
+  const exact = counts.map(c => (c / total) * 100);
+  const floors = exact.map(Math.floor);
+  const remainder = 100 - floors.reduce((a, b) => a + b, 0);
+  const indices = exact
+    .map((v, i) => ({ diff: v - floors[i], i }))
+    .sort((a, b) => b.diff - a.diff);
+  for (let k = 0; k < remainder; k++) floors[indices[k].i]++;
+  return floors;
+}
+
 // GitHub-style: Green contribution palette
 const TOKEN_COLORS = {
   input: 'bg-[#216e39] dark:bg-[#39d353]',
@@ -51,12 +65,10 @@ export function TokenBreakdownCard({ tokenBreakdown, className }: TokenBreakdown
     estimatedCost,
   } = tokenBreakdown;
 
-  // Calculate percentages
+  // Calculate percentages using largest-remainder method to ensure they sum to exactly 100
   const total = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
-  const inputPercent = total > 0 ? Math.round((inputTokens / total) * 100) : 0;
-  const outputPercent = total > 0 ? Math.round((outputTokens / total) * 100) : 0;
-  const cacheCreationPercent = total > 0 ? Math.round((cacheCreationTokens / total) * 100) : 0;
-  const cacheReadPercent = total > 0 ? Math.round((cacheReadTokens / total) * 100) : 0;
+  const [inputPercent, outputPercent, cacheCreationPercent, cacheReadPercent] =
+    distributePercentages([inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens]);
 
   // Calculate cache efficiency
   const totalCacheTokens = cacheCreationTokens + cacheReadTokens;

@@ -4,7 +4,7 @@ import { z } from 'zod';
  * Ranking Zod schemas for validation
  */
 
-export const RankingPeriodSchema = z.enum(['daily', 'weekly', 'monthly', 'all-time']);
+export const RankingPeriodSchema = z.enum(['daily', 'weekly', 'monthly', 'all_time']);
 
 export const RankingSchema = z.object({
   id: z.string().uuid(),
