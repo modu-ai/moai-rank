@@ -373,25 +373,30 @@ export async function GET(
       lastActiveDate: sortedDates[0] ?? null,
     };
 
-    // Calculate hourly activity pattern from sessions
+    // Calculate hourly activity pattern from sessions (last 90 days, KST timezone)
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const ninetyDaysAgoTokens = new Date();
+    ninetyDaysAgoTokens.setDate(ninetyDaysAgoTokens.getDate() - 90);
+
     const hourlyActivityResult = await db
       .select({
-        hour: sql<number>`EXTRACT(HOUR FROM (${sessions.endedAt} AT TIME ZONE 'UTC'))`,
+        hour: sql<number>`EXTRACT(HOUR FROM (${sessions.endedAt} AT TIME ZONE 'Asia/Seoul'))`,
         sessionCount: sql<number>`COUNT(*)`,
       })
       .from(sessions)
-      .where(eq(sessions.userId, user.id))
-      .groupBy(sql`EXTRACT(HOUR FROM (${sessions.endedAt} AT TIME ZONE 'UTC'))`);
+      .where(and(eq(sessions.userId, user.id), gte(sessions.endedAt, ninetyDaysAgo)))
+      .groupBy(sql`EXTRACT(HOUR FROM (${sessions.endedAt} AT TIME ZONE 'Asia/Seoul'))`);
 
     // Get hourly token data from tokenUsage
     const hourlyTokenResult = await db
       .select({
-        hour: sql<number>`EXTRACT(HOUR FROM (${tokenUsage.recordedAt} AT TIME ZONE 'UTC'))`,
+        hour: sql<number>`EXTRACT(HOUR FROM (${tokenUsage.recordedAt} AT TIME ZONE 'Asia/Seoul'))`,
         tokens: sql<number>`COALESCE(SUM(${tokenUsage.inputTokens} + ${tokenUsage.outputTokens}), 0)`,
       })
       .from(tokenUsage)
-      .where(eq(tokenUsage.userId, user.id))
-      .groupBy(sql`EXTRACT(HOUR FROM (${tokenUsage.recordedAt} AT TIME ZONE 'UTC'))`);
+      .where(and(eq(tokenUsage.userId, user.id), gte(tokenUsage.recordedAt, ninetyDaysAgoTokens)))
+      .groupBy(sql`EXTRACT(HOUR FROM (${tokenUsage.recordedAt} AT TIME ZONE 'Asia/Seoul'))`);
 
     // Merge hourly data and fill missing hours with zeros
     const hourlyMap = new Map<number, { tokens: number; sessions: number }>();
@@ -420,23 +425,28 @@ export async function GET(
     // Calculate day of week activity pattern
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+    const ninetyDaysAgoDow = new Date();
+    ninetyDaysAgoDow.setDate(ninetyDaysAgoDow.getDate() - 90);
+    const ninetyDaysAgoDowTokens = new Date();
+    ninetyDaysAgoDowTokens.setDate(ninetyDaysAgoDowTokens.getDate() - 90);
+
     const dayOfWeekResult = await db
       .select({
-        dayOfWeek: sql<number>`EXTRACT(DOW FROM (${sessions.endedAt} AT TIME ZONE 'UTC'))`,
+        dayOfWeek: sql<number>`EXTRACT(DOW FROM (${sessions.endedAt} AT TIME ZONE 'Asia/Seoul'))`,
         sessionCount: sql<number>`COUNT(*)`,
       })
       .from(sessions)
-      .where(eq(sessions.userId, user.id))
-      .groupBy(sql`EXTRACT(DOW FROM (${sessions.endedAt} AT TIME ZONE 'UTC'))`);
+      .where(and(eq(sessions.userId, user.id), gte(sessions.endedAt, ninetyDaysAgoDow)))
+      .groupBy(sql`EXTRACT(DOW FROM (${sessions.endedAt} AT TIME ZONE 'Asia/Seoul'))`);
 
     const dayOfWeekTokenResult = await db
       .select({
-        dayOfWeek: sql<number>`EXTRACT(DOW FROM (${tokenUsage.recordedAt} AT TIME ZONE 'UTC'))`,
+        dayOfWeek: sql<number>`EXTRACT(DOW FROM (${tokenUsage.recordedAt} AT TIME ZONE 'Asia/Seoul'))`,
         tokens: sql<number>`COALESCE(SUM(${tokenUsage.inputTokens} + ${tokenUsage.outputTokens}), 0)`,
       })
       .from(tokenUsage)
-      .where(eq(tokenUsage.userId, user.id))
-      .groupBy(sql`EXTRACT(DOW FROM (${tokenUsage.recordedAt} AT TIME ZONE 'UTC'))`);
+      .where(and(eq(tokenUsage.userId, user.id), gte(tokenUsage.recordedAt, ninetyDaysAgoDowTokens)))
+      .groupBy(sql`EXTRACT(DOW FROM (${tokenUsage.recordedAt} AT TIME ZONE 'Asia/Seoul'))`);
 
     // Merge day of week data
     const dayMap = new Map<number, { tokens: number; sessions: number }>();

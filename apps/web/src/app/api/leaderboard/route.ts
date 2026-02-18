@@ -91,7 +91,8 @@ export async function GET(request: NextRequest) {
 
     // Fetch data with caching
     const result = await withCache(cacheKey, defaultTtl, async () => {
-      // Query rankings with user info
+      // Query rankings with user info and total count in a single query
+      // using COUNT(*) OVER() window function to avoid a second round-trip
       const rankingsData = await db
         .select({
           rank: rankings.rankPosition,
@@ -103,6 +104,7 @@ export async function GET(request: NextRequest) {
           sessionCount: rankings.sessionCount,
           efficiencyScore: rankings.efficiencyScore,
           privacyMode: users.privacyMode,
+          totalCount: sql<number>`COUNT(*) OVER()`,
         })
         .from(rankings)
         .innerJoin(users, eq(rankings.userId, users.id))
@@ -111,13 +113,7 @@ export async function GET(request: NextRequest) {
         .limit(limit)
         .offset(offset);
 
-      // Get total count for pagination
-      const countResult = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(rankings)
-        .where(and(eq(rankings.periodType, period), eq(rankings.periodStart, periodStart)));
-
-      const total = Number(countResult[0]?.count ?? 0);
+      const total = Number(rankingsData[0]?.totalCount ?? 0);
 
       // Transform data respecting privacy settings
       const entries: LeaderboardEntry[] = rankingsData.map((r) => ({

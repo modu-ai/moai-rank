@@ -66,7 +66,8 @@ async function getLeaderboardData(
     yesterday.setDate(yesterday.getDate() - 1);
     const periodStart = getPeriodStart(validPeriod, yesterday);
 
-    // Query rankings with user info directly
+    // Query rankings with user info and total count in a single query
+    // using COUNT(*) OVER() window function to avoid a second round-trip
     const rankingsData = await db
       .select({
         rank: rankings.rankPosition,
@@ -78,6 +79,7 @@ async function getLeaderboardData(
         sessionCount: rankings.sessionCount,
         efficiencyScore: rankings.efficiencyScore,
         privacyMode: users.privacyMode,
+        totalCount: sql<number>`COUNT(*) OVER()`,
       })
       .from(rankings)
       .innerJoin(users, eq(rankings.userId, users.id))
@@ -86,13 +88,7 @@ async function getLeaderboardData(
       .limit(limit)
       .offset(offset);
 
-    // Get total count for pagination
-    const countResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(rankings)
-      .where(and(eq(rankings.periodType, validPeriod), eq(rankings.periodStart, periodStart)));
-
-    const total = Number(countResult[0]?.count ?? 0);
+    const total = Number(rankingsData[0]?.totalCount ?? 0);
 
     // Transform data respecting privacy settings
     const entries: LeaderboardEntry[] = rankingsData.map((r) => ({

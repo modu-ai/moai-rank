@@ -72,6 +72,7 @@ export const sessions = pgTable(
     index('sessions_user_id_idx').on(table.userId),
     index('sessions_created_at_idx').on(table.createdAt),
     index('sessions_started_at_idx').on(table.startedAt),
+    index('sessions_user_ended_at_idx').on(table.userId, table.endedAt),
   ]
 );
 
@@ -146,6 +147,7 @@ export const rankings = pgTable(
     unique().on(table.userId, table.periodType, table.periodStart),
     index('rankings_period_type_idx').on(table.periodType),
     index('rankings_rank_position_idx').on(table.periodType, table.rankPosition),
+    index('rankings_period_lookup_idx').on(table.periodType, table.periodStart, table.rankPosition),
   ]
 );
 

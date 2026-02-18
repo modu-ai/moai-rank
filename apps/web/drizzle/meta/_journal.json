@@ -15,6 +15,13 @@
       "when": 1770796150330,
       "tag": "0001_huge_nick_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771402106027,
+      "tag": "0002_gray_network",
+      "breakpoints": true
     }
   ]
 }

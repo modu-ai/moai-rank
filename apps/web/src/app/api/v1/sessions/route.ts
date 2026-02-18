@@ -319,7 +319,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Update daily aggregates
-    const sessionDate = new Date(sessionData.endedAt).toISOString().split('T')[0];
+    // Convert to KST (UTC+9) for date boundary calculation
+    const endedAtDate = new Date(sessionData.endedAt);
+    const kstOffset = 9 * 60 * 60 * 1000;
+    const kstDate = new Date(endedAtDate.getTime() + kstOffset);
+    const sessionDate = kstDate.toISOString().split('T')[0];
 
     await db
       .insert(dailyAggregates)

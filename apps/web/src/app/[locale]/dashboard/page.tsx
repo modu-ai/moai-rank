@@ -27,6 +27,20 @@ import { ToolUsageChart } from '@/components/profile/tool-usage-chart';
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
+/** Distributes 100% among values using largest-remainder method to ensure sum = 100 */
+function distributePercentages(counts: number[]): number[] {
+  const total = counts.reduce((a, b) => a + b, 0);
+  if (total === 0) return counts.map(() => 0);
+  const exact = counts.map(c => (c / total) * 100);
+  const floors = exact.map(Math.floor);
+  const remainder = 100 - floors.reduce((a, b) => a + b, 0);
+  const indices = exact
+    .map((v, i) => ({ diff: v - floors[i], i }))
+    .sort((a, b) => b.diff - a.diff);
+  for (let k = 0; k < remainder; k++) floors[indices[k].i]++;
+  return floors;
+}
+
 export const metadata: Metadata = {
   title: 'Dashboard',
   description: 'View your AI token usage statistics and manage your account',
@@ -316,7 +330,7 @@ async function getUserProfile(username: string): Promise<ApiResponse<UserProfile
     const outputTokens = Number(tokenData?.outputTokens ?? 0);
     const cacheCreationTokens = Number(tokenData?.cacheCreationTokens ?? 0);
     const cacheReadTokens = Number(tokenData?.cacheReadTokens ?? 0);
-    const totalTokens = inputTokens + outputTokens;
+    const totalTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
 
     // Calculate estimated cost (using Claude Sonnet 4 pricing as default)
     const estimatedCost =
@@ -346,15 +360,14 @@ async function getUserProfile(username: string): Promise<ApiResponse<UserProfile
 
     const totalModelSessions = modelUsageResult.reduce((sum, m) => sum + Number(m.sessionCount), 0);
 
-    const modelUsage: ModelUsage[] = modelUsageResult
-      .filter((m) => m.modelName)
-      .map((m) => ({
+    const validModels = modelUsageResult.filter((m) => m.modelName);
+    const modelCounts = validModels.map((m) => Number(m.sessionCount));
+    const modelPercentages = distributePercentages(modelCounts);
+    const modelUsage: ModelUsage[] = validModels
+      .map((m, i) => ({
         modelName: m.modelName ?? 'unknown',
         sessionCount: Number(m.sessionCount),
-        percentage:
-          totalModelSessions > 0
-            ? Math.round((Number(m.sessionCount) / totalModelSessions) * 100)
-            : 0,
+        percentage: totalModelSessions > 0 ? modelPercentages[i] : 0,
       }))
       .sort((a, b) => b.sessionCount - a.sessionCount);
 
@@ -437,25 +450,30 @@ async function getUserProfile(username: string): Promise<ApiResponse<UserProfile
       lastActiveDate: sortedDates[0] ?? null,
     };
 
-    // Calculate hourly activity pattern from sessions
+    // Calculate hourly activity pattern from sessions (last 90 days, KST timezone)
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const ninetyDaysAgoTokens = new Date();
+    ninetyDaysAgoTokens.setDate(ninetyDaysAgoTokens.getDate() - 90);
+
     const hourlyActivityResult = await db
       .select({
-        hour: sql<number>`EXTRACT(HOUR FROM ${sessions.endedAt})`,
+        hour: sql<number>`EXTRACT(HOUR FROM (${sessions.endedAt} AT TIME ZONE 'Asia/Seoul'))`,
         sessionCount: sql<number>`COUNT(*)`,
       })
       .from(sessions)
-      .where(eq(sessions.userId, user.id))
-      .groupBy(sql`EXTRACT(HOUR FROM ${sessions.endedAt})`);
+      .where(and(eq(sessions.userId, user.id), gte(sessions.endedAt, ninetyDaysAgo)))
+      .groupBy(sql`EXTRACT(HOUR FROM (${sessions.endedAt} AT TIME ZONE 'Asia/Seoul'))`);
 
     // Get hourly token data from tokenUsage
     const hourlyTokenResult = await db
       .select({
-        hour: sql<number>`EXTRACT(HOUR FROM ${tokenUsage.recordedAt})`,
+        hour: sql<number>`EXTRACT(HOUR FROM (${tokenUsage.recordedAt} AT TIME ZONE 'Asia/Seoul'))`,
         tokens: sql<number>`COALESCE(SUM(${tokenUsage.inputTokens} + ${tokenUsage.outputTokens}), 0)`,
       })
       .from(tokenUsage)
-      .where(eq(tokenUsage.userId, user.id))
-      .groupBy(sql`EXTRACT(HOUR FROM ${tokenUsage.recordedAt})`);
+      .where(and(eq(tokenUsage.userId, user.id), gte(tokenUsage.recordedAt, ninetyDaysAgoTokens)))
+      .groupBy(sql`EXTRACT(HOUR FROM (${tokenUsage.recordedAt} AT TIME ZONE 'Asia/Seoul'))`);
 
     // Merge hourly data and fill missing hours with zeros
     const hourlyMap = new Map<number, { tokens: number; sessions: number }>();
@@ -484,23 +502,28 @@ async function getUserProfile(username: string): Promise<ApiResponse<UserProfile
     // Calculate day of week activity pattern
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+    const ninetyDaysAgoDow = new Date();
+    ninetyDaysAgoDow.setDate(ninetyDaysAgoDow.getDate() - 90);
+    const ninetyDaysAgoDowTokens = new Date();
+    ninetyDaysAgoDowTokens.setDate(ninetyDaysAgoDowTokens.getDate() - 90);
+
     const dayOfWeekResult = await db
       .select({
-        dayOfWeek: sql<number>`EXTRACT(DOW FROM ${sessions.endedAt})`,
+        dayOfWeek: sql<number>`EXTRACT(DOW FROM (${sessions.endedAt} AT TIME ZONE 'Asia/Seoul'))`,
         sessionCount: sql<number>`COUNT(*)`,
       })
       .from(sessions)
-      .where(eq(sessions.userId, user.id))
-      .groupBy(sql`EXTRACT(DOW FROM ${sessions.endedAt})`);
+      .where(and(eq(sessions.userId, user.id), gte(sessions.endedAt, ninetyDaysAgoDow)))
+      .groupBy(sql`EXTRACT(DOW FROM (${sessions.endedAt} AT TIME ZONE 'Asia/Seoul'))`);
 
     const dayOfWeekTokenResult = await db
       .select({
-        dayOfWeek: sql<number>`EXTRACT(DOW FROM ${tokenUsage.recordedAt})`,
+        dayOfWeek: sql<number>`EXTRACT(DOW FROM (${tokenUsage.recordedAt} AT TIME ZONE 'Asia/Seoul'))`,
         tokens: sql<number>`COALESCE(SUM(${tokenUsage.inputTokens} + ${tokenUsage.outputTokens}), 0)`,
       })
       .from(tokenUsage)
-      .where(eq(tokenUsage.userId, user.id))
-      .groupBy(sql`EXTRACT(DOW FROM ${tokenUsage.recordedAt})`);
+      .where(and(eq(tokenUsage.userId, user.id), gte(tokenUsage.recordedAt, ninetyDaysAgoDowTokens)))
+      .groupBy(sql`EXTRACT(DOW FROM (${tokenUsage.recordedAt} AT TIME ZONE 'Asia/Seoul'))`);
 
     // Merge day of week data
     const dayMap = new Map<number, { tokens: number; sessions: number }>();
@@ -633,13 +656,16 @@ async function getUserProfile(username: string): Promise<ApiResponse<UserProfile
       else if (maxScore === refactorerScore) primaryStyle = 'Refactorer';
       else if (maxScore === automatorScore) primaryStyle = 'Automator';
 
+      const [explorerPct, creatorPct, refactorerPct, automatorPct] = distributePercentages([
+        explorerScore, creatorScore, refactorerScore, automatorScore
+      ]);
       vibeStyle = {
         primaryStyle,
         styleScores: {
-          explorer: Math.round((explorerScore / totalToolUsage) * 100),
-          creator: Math.round((creatorScore / totalToolUsage) * 100),
-          refactorer: Math.round((refactorerScore / totalToolUsage) * 100),
-          automator: Math.round((automatorScore / totalToolUsage) * 100),
+          explorer: explorerPct,
+          creator: creatorPct,
+          refactorer: refactorerPct,
+          automator: automatorPct,
         },
         avgSessionDuration:
           totalSessionCount > 0 ? Math.round(totalDuration / totalSessionCount) : 0,

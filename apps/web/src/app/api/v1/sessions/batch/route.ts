@@ -272,7 +272,11 @@ export async function POST(request: NextRequest) {
     >();
 
     for (const s of newSessions) {
-      const dateKey = new Date(s.data.endedAt).toISOString().split('T')[0];
+      // Convert to KST (UTC+9) for date boundary calculation
+      const endedAtDate = new Date(s.data.endedAt);
+      const kstOffset = 9 * 60 * 60 * 1000;
+      const kstDate = new Date(endedAtDate.getTime() + kstOffset);
+      const dateKey = kstDate.toISOString().split('T')[0];
       const existing = dailyStats.get(dateKey) || {
         inputTokens: 0,
         outputTokens: 0,
