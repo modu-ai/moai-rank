@@ -645,6 +645,15 @@ async function getUserProfile(username: string): Promise<ApiResponse<UserProfile
           totalSessionCount > 0 ? Math.round(totalDuration / totalSessionCount) : 0,
         avgTurnsPerSession: totalSessionCount > 0 ? Math.round(totalTurns / totalSessionCount) : 0,
       };
+    } else if (totalSessionCount > 0) {
+      // Fallback: no toolUsage data in DB, derive style from session patterns alone
+      vibeStyle = {
+        primaryStyle: 'Explorer' as const,
+        styleScores: { explorer: 25, creator: 25, refactorer: 25, automator: 25 },
+        avgSessionDuration:
+          totalSessionCount > 0 ? Math.round(totalDuration / totalSessionCount) : 0,
+        avgTurnsPerSession: totalSessionCount > 0 ? Math.round(totalTurns / totalSessionCount) : 0,
+      };
     }
 
     return {

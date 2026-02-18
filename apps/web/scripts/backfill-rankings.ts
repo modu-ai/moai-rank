@@ -18,6 +18,7 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../src/db/schema';
 import { users, rankings, tokenUsage } from '../src/db';
 import { eq, and, sql, gte, lt } from 'drizzle-orm';
+import { calculateCompositeScore } from '../src/lib/score';
 
 function getDatabaseUrl(): string {
   const url = process.env.DATABASE_URL;
@@ -108,14 +109,19 @@ async function calculateRankingsForDate(targetDate: string) {
 
     // Calculate scores
     const scoredUsers = userStats.map((user) => {
-      const totalTokens = Number(user.totalInputTokens) + Number(user.totalOutputTokens);
-      const inputTokens = Number(user.totalInputTokens);
-      const outputTokens = Number(user.totalOutputTokens);
+      const totalInputTokens = Number(user.totalInputTokens);
+      const totalOutputTokens = Number(user.totalOutputTokens);
+      const totalTokens = totalInputTokens + totalOutputTokens;
       const sessionCount = Number(user.sessionCount);
 
-      // Simplified composite score calculation
-      const compositeScore = totalTokens / 1000 + sessionCount * 10;
-      const efficiencyScore = outputTokens / (inputTokens || 1);
+      // Use production composite score formula
+      const compositeScore = calculateCompositeScore({
+        totalInputTokens,
+        totalOutputTokens,
+        totalSessions: sessionCount,
+        currentStreak: 0,
+      });
+      const efficiencyScore = totalOutputTokens / (totalInputTokens || 1);
 
       return {
         userId: user.userId,

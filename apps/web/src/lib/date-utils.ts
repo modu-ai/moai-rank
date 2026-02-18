@@ -23,21 +23,20 @@ export function getPeriodStart(period: string, baseDate?: Date): string {
 
   switch (period) {
     case 'daily':
-      // Use local timezone instead of UTC to ensure consistent date calculation
-      // en-CA locale returns YYYY-MM-DD format (ISO 8601 compatible)
-      return start.toLocaleDateString('en-CA');
+      // Use UTC to ensure consistent date calculation regardless of server timezone
+      return start.toISOString().split('T')[0];
 
     case 'weekly': {
       // Find Monday of current week
       const day = start.getDay();
       const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Sunday = 0, treat as -6
       start.setDate(diff);
-      return start.toLocaleDateString('en-CA');
+      return start.toISOString().split('T')[0];
     }
 
     case 'monthly':
       start.setDate(1); // First day of month
-      return start.toLocaleDateString('en-CA');
+      return start.toISOString().split('T')[0];
 
     case 'all_time':
       return '2024-01-01'; // Epoch start for rankings
@@ -73,20 +72,20 @@ export function getPeriodEnd(period: string, baseDate?: Date): string {
   switch (period) {
     case 'daily':
       end.setDate(end.getDate() + 1);
-      return end.toLocaleDateString('en-CA');
+      return end.toISOString().split('T')[0];
 
     case 'weekly': {
       // Find Monday of current week, then add 7 days
       const day = end.getDay();
       const diff = end.getDate() - day + (day === 0 ? -6 : 1);
       end.setDate(diff + 7);
-      return end.toLocaleDateString('en-CA');
+      return end.toISOString().split('T')[0];
     }
 
     case 'monthly':
       end.setMonth(end.getMonth() + 1);
       end.setDate(1);
-      return end.toLocaleDateString('en-CA');
+      return end.toISOString().split('T')[0];
 
     case 'all_time':
       return '2099-12-31'; // Far future for all-time

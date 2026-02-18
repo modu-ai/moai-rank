@@ -56,7 +56,7 @@ const BatchSessionSchema = z.object({
   startedAt: z.string().datetime().optional(),
   durationSeconds: z.number().int().min(0).max(604800).optional(), // Max 7 days
   turnCount: z.number().int().min(0).max(10000).optional(),
-  toolUsage: z.record(z.string(), z.number().int().min(0)).optional(),
+  toolUsage: z.record(z.string(), z.number().int().min(0)).optional().default({}),
   codeMetrics: CodeMetricsSchema.optional(),
   deviceId: z.string().max(128).optional(),
 });
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
       durationSeconds: s.data.durationSeconds,
       modelName: s.data.modelName,
       turnCount: s.data.turnCount,
-      toolUsage: s.data.toolUsage,
+      toolUsage: s.data.toolUsage ?? {},
       codeMetrics: s.data.codeMetrics,
       deviceId: s.data.deviceId,
     }));
